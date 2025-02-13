@@ -7,8 +7,8 @@ TX                                      ! IPC Mode (OFF,TX,RX,TXRX,ACS,WRITEFILE
 SERVER                                  ! Socket Role (SERVER,CLIENT,GMSEC_CLIENT)
 localhost     10001                     ! Server Host Name, Port 
 TRUE                                    ! Allow Blocking (i.e. wait on RX)
-TRUE                                    ! Echo to stdout
+FALSE                                    ! Echo to stdout
 3                                       ! Number of TX prefixes
 "SC"                                    ! Prefix 0
 "Orb"                                   ! Prefix 1
-"World"                                 ! Prefix 2
+"World"
