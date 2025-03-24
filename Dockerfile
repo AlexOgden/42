@@ -31,5 +31,5 @@ USER 42user
 
 WORKDIR /app
 
-ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["/app/42", "Tx"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/app/42"]
+CMD ["Tx"]
