@@ -1,11 +1,25 @@
 # Build 42 in a Debian container first
 FROM debian:bookworm-slim AS builder
 
-RUN apt-get update && apt-get install -y gcc make freeglut3-dev
+RUN apt-get update && apt-get install -y gcc make freeglut3-dev wget
+
+# Install Julia
+RUN wget -q https://julialang-s3.julialang.org/bin/linux/x64/1.11/julia-1.11.4-linux-x86_64.tar.gz && \
+    tar -xzf julia-1.11.4-linux-x86_64.tar.gz -C /opt && \
+    ln -s /opt/julia-1.11.4/bin/julia /usr/local/bin/julia && \
+    rm julia-1.11.4-linux-x86_64.tar.gz
+
+# Install Julia JSON package
+RUN julia -e 'import Pkg; Pkg.add("JSON")'
 
 WORKDIR /app
 COPY . .
-RUN make
+
+# Set the database fields to send over IPC defined in Database/42.json
+RUN julia MetaCode/JsonToTxRxIPC.jl
+
+# Compile the 42 C code
+RUN make -s
 
 # Use a minimal base for runtime stage
 FROM debian:bookworm-slim
