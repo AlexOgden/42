@@ -10,7 +10,7 @@ RUN wget -q https://julialang-s3.julialang.org/bin/linux/x64/1.11/julia-1.11.4-l
     rm julia-1.11.4-linux-x86_64.tar.gz
 
 # Install Julia JSON package
-RUN julia -e 'import Pkg; Pkg.add("JSON")'
+# RUN julia -e 'import Pkg; Pkg.add("JSON")'
 
 WORKDIR /app
 COPY . .
