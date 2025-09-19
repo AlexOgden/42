@@ -1,3 +1,4 @@
+#pragma message("Compiling TxRxIPC.c: Non-blocking socket patch is active")
 #include "42.h"
 #define EXTERN extern
 #include "Ac.h"
@@ -282,8 +283,8 @@ void ReadFromSocket(SOCKET Socket, long EchoEnabled)
 
       NumBytes = read(Socket,Msg,16384);
       if (NumBytes < 0) {
-         printf("Error reading from socket in ReadFromSocket.\n");
-         exit(1);
+         /* Non-blocking: no data available, just return and continue sim */
+         return;
       }
       write(Socket,Ack,4);
 
@@ -297,7 +298,8 @@ void ReadFromSocket(SOCKET Socket, long EchoEnabled)
             line[Iline++] = Msg[Imsg++];
          }
          line[Iline++] = Msg[Imsg++];
-         if (EchoEnabled) printf("%s",line);
+         /* Always print every received line for debugging */
+         printf("[IPC RX] %s", line);
 
          if (sscanf(line,"TIME %ld-%ld-%ld:%ld:%lf",
             &Year,&doy,&Hour,&Minute,&Second) == 5) {
@@ -471,6 +473,79 @@ void ReadFromSocket(SOCKET Socket, long EchoEnabled)
       {
          SC[Is].Whl[k].H = DbleVal[0];
          SC[Is].RequestStateRefresh = 1;
+      }
+
+      /*
+      ** ASCII actuator command inputs
+      ** These map to AC (flight software) command buffers, which are then
+      ** applied to physical actuators by MapCmdsToActuators() prior to
+      ** Actuators(). This allows external ASCII clients to command torque,
+      ** wheels, MTBs, and thrusters.
+      */
+
+      /* Ideal actuators (torque/force directly on body 0) */
+      {
+         int match = sscanf(line,"SC[%ld].AC.IdealTrq = [%le %le %le]",
+            &Is,
+            &DbleVal[0],
+            &DbleVal[1],
+            &DbleVal[2]);
+         printf("[IPC RX] IdealTrq sscanf match count: %d\n", match);
+         if (match == 4) {
+            SC[Is].AC.IdealTrq[0] = DbleVal[0];
+            SC[Is].AC.IdealTrq[1] = DbleVal[1];
+            SC[Is].AC.IdealTrq[2] = DbleVal[2];
+            /* Console confirmation of IdealTorque command */
+            printf("IdealTorque applied for SC[%ld]: [% .6le % .6le % .6le]\n",
+               Is, DbleVal[0], DbleVal[1], DbleVal[2]);
+         }
+      }
+      if (sscanf(line,"SC[%ld].AC.IdealFrc = [%le %le %le]",
+         &Is,
+         &DbleVal[0],
+         &DbleVal[1],
+         &DbleVal[2]) == 4)
+      {
+         SC[Is].AC.IdealFrc[0] = DbleVal[0];
+         SC[Is].AC.IdealFrc[1] = DbleVal[1];
+         SC[Is].AC.IdealFrc[2] = DbleVal[2];
+      }
+
+      /* Reaction wheel torque command (per wheel) via AC */
+      if (sscanf(line,"SC[%ld].AC.Whl[%ld].Tcmd = %le",
+         &Is,&k,
+         &DbleVal[0]) == 3)
+      {
+         SC[Is].AC.Whl[k].Tcmd = DbleVal[0];
+      }
+      /* Also support direct set on S->Whl (bypasses AC) */
+      if (sscanf(line,"SC[%ld].Whl[%ld].Tcmd = %le",
+         &Is,&k,
+         &DbleVal[0]) == 3)
+      {
+         SC[Is].Whl[k].Tcmd = DbleVal[0];
+      }
+
+      /* Magnetorquer command (per MTB) via AC */
+      if (sscanf(line,"SC[%ld].AC.MTB[%ld].Mcmd = %le",
+         &Is,&k,
+         &DbleVal[0]) == 3)
+      {
+         SC[Is].AC.MTB[k].Mcmd = DbleVal[0];
+      }
+
+      /* Thruster commands via AC */
+      if (sscanf(line,"SC[%ld].AC.Thr[%ld].PulseWidthCmd = %le",
+         &Is,&k,
+         &DbleVal[0]) == 3)
+      {
+         SC[Is].AC.Thr[k].PulseWidthCmd = DbleVal[0];
+      }
+      if (sscanf(line,"SC[%ld].AC.Thr[%ld].ThrustLevelCmd = %le",
+         &Is,&k,
+         &DbleVal[0]) == 3)
+      {
+         SC[Is].AC.Thr[k].ThrustLevelCmd = DbleVal[0];
       }
 
       if (sscanf(line,"World[%ld].PosH = [%le %le %le]",

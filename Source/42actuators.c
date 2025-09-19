@@ -238,6 +238,12 @@ void Actuators(struct SCType *S)
          S->B[0].FrcN[i] += FrcN[i];
          S->B[0].Trq[i] += S->IdealAct[i].Tcmd;
       }
+      /* Apply IdealTrq from AC (IPC) as direct torque on main body */
+      if (S->AC.IdealTrq[0] != 0.0 || S->AC.IdealTrq[1] != 0.0 || S->AC.IdealTrq[2] != 0.0) {
+         for(i=0;i<3;i++) {
+            S->B[0].Trq[i] += S->AC.IdealTrq[i];
+         }
+      }
       if (S->FlexActive) {
          N = &S->B[0].Node[0]; /* Arbitrarily put ideal actuators at Node 0 */
          for(i=0;i<3;i++) {
