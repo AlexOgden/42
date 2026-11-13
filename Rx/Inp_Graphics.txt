@@ -1,5 +1,5 @@
 <<<<<<<<<<<<<<<<  42 Graphics Configuration File  >>>>>>>>>>>>>>>>>>>
-1.0                                !  GL Output Interval [sec]
+0.1                                !  GL Output Interval [sec]
 Skymap09.txt                       !  Star Catalog File Name
 TRUE                               !  Map Window Exists
 FALSE                              !  Orrery Window Exists
@@ -23,10 +23,10 @@ FRONT                              !  Initial POV View (FRONT, FRONT_RIGHT, etc)
 5.0E-5                             !  Mouse Scale Factor
 1.8                                !  Display's Gamma Exponent (1.8-4.0)
 ************************** CAM Show Menu ****************************
-FALSE "N Axes"                     !  Show N Axes
+TRUE  "N Axes"                     !  Show N Axes
 FALSE "L Axes"                     !  Show L Axes
 FALSE "F Axes"                     !  Show F Axes
-FALSE "B Axes"                     !  Show B Axes
+TRUE  "B Axes"                     !  Show B Axes
 FALSE "N Grid"                     !  Show N Grid
 FALSE "L Grid"                     !  Show L Grid
 FALSE "F Grid"                     !  Show F Grid

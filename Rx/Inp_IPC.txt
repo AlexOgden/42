@@ -4,7 +4,7 @@
 RX                                      ! IPC Mode (OFF,TX,RX,TXRX,WRITEFILE,READFILE)
 "State00.42"                            ! File name for WRITE or READ
 SERVER                                  ! Socket Role (SERVER,CLIENT,GMSEC_CLIENT)
-localhost     10002                     ! Server Host Name, Port 
+localhost     10005                     ! Server Host Name, Port 
 FALSE                                    ! Allow Blocking (i.e. wait on RX)
 FALSE                                    ! Echo to stdout
 0                                       ! Number of TX prefixes
