@@ -18,7 +18,6 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdio.h>
-#include <GLFW/glfw3.h>
 
 /*
 ** #ifdef __cplusplus

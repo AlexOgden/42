@@ -236,7 +236,7 @@ FALSE                       ! Wheel Jitter Active
 NONE                          ! Jitter Input File Name
 =============================  Wheel 1  ================================
 0.0                           ! Initial Momentum, N-m-sec
-0.0   1.0   0.0               ! Wheel Axis Components, [X, Y, Z]
+0  0.0   1.0   0.0            ! Wheel Axis Components, [X, Y, Z]
 0.14   50.0                   ! Max Torque (N-m), Momentum (N-m-sec)
 0.012                         ! Wheel Rotor Inertia, kg-m^2
 0                             ! Body
@@ -244,7 +244,7 @@ NONE                          ! Jitter Input File Name
 NONE                          ! Jitter Input File Name
 =============================  Wheel 2  ================================
 0.0                           ! Initial Momentum, N-m-sec
-0.0   0.0   1.0               ! Wheel Axis Components, [X, Y, Z]
+0  0.0   0.0   1.0            ! Wheel Axis Components, [X, Y, Z]
 0.14   50.0                   ! Max Torque (N-m), Momentum (N-m-sec)
 0.012                         ! Wheel Rotor Inertia, kg-m^2
 0                             ! Body
@@ -338,20 +338,6 @@ Z_AXIS                        ! Boresight Axis X_AXIS, Y_AXIS, or Z_AXIS
 0.0                           ! DV Noise, m/s
 0.5                           ! Initial Bias (m/s^2)
 0                             ! Node
-********************************* Camera *********************************
-0                           ! Number of Cameras
-================================ Camera 0 ================================
-1.0                         ! Sample Time,sec
-"Camera"                    ! Title
-0  0                        ! Body, Node
-90.0  0.0  0.0  321         ! Nominal Mounting Angles (deg), Seq in Body
-Z_AXIS                      ! Boresight Axis X_AXIS, Y_AXIS, or Z_AXIS
-800  450                    ! Screen Position, pixels
-300  300                    ! Window Width, Height, pixels
-30.0                        ! Vertical FOV Size, deg
-1.0  1000.0                 ! Near, Far Clipping Planes (m)
-RGB                         ! Pixel Format (RGB, RGBA, DEPTH)
-TRUE   FALSE                ! Display to Screen, Export to CPU
 ************************ Fine Guidance Sensor ****************************
 0                           ! Number of Fine Guidance Sensors
 ========================= Fine Guidance Sensor 0 =========================

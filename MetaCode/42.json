@@ -245,141 +245,36 @@
          "Table Name": "MagnetometerType",
          "Table Type": "Structure",
          "Table Data": [
-            {
-               "Variable Name": "Field",
-               "I/O Role": "OUTPUT",
-               "IPC Role": "Tx",
-               "Data Type": "double",
-               "Description": "Magfield Component, Tesla"
-            }
          ]
       },
       {
          "Table Name": "CssType",
          "Table Type": "Structure",
          "Table Data": [
-            {
-               "Variable Name": "Valid",
-               "I/O Role": "OUTPUT",
-               "IPC Role": "Tx",
-               "Data Type": "long"
-            },
-            {
-               "Variable Name": "Illum",
-               "I/O Role": "OUTPUT",
-               "IPC Role": "Tx",
-               "Data Type": "double",
-               "Description": "Units defined by scale"
-            }
          ]
       },
       {
          "Table Name": "FssType",
          "Table Type": "Structure",
          "Table Data": [
-            {
-               "Variable Name": "Valid",
-               "I/O Role": "OUTPUT",
-               "IPC Role": "Tx",
-               "Data Type": "long"
-            },
-            {
-               "Variable Name": "SunAng",
-               "I/O Role": "OUTPUT",
-               "IPC Role": "Tx",
-               "Data Type": "double",
-               "Array Size": "2"
-            }
          ]
       },
       {
          "Table Name": "StarTrackerType",
          "Table Type": "Structure",
          "Table Data": [
-            {
-               "Variable Name": "Valid",
-               "I/O Role": "OUTPUT",
-               "IPC Role": "Tx",
-               "Data Type": "long"
-            },
-            {
-               "Variable Name": "qn",
-               "I/O Role": "OUTPUT",
-               "IPC Role": "Tx",
-               "Data Type": "double",
-               "Array Size": "4"
-            }
          ]
       },
       {
          "Table Name": "GpsType",
          "Table Type": "Structure",
          "Table Data": [
-            {
-               "Variable Name": "Valid",
-               "I/O Role": "OUTPUT",
-               "IPC Role": "Tx",
-               "Data Type": "long"
-            },
-            {
-               "Variable Name": "Rollover",
-               "I/O Role": "OUTPUT",
-               "IPC Role": "Tx",
-               "Data Type": "long"
-            },
-            {
-               "Variable Name": "Week",
-               "I/O Role": "OUTPUT",
-               "IPC Role": "Tx",
-               "Data Type": "long"
-            },
-            {
-               "Variable Name": "Sec",
-               "I/O Role": "OUTPUT",
-               "IPC Role": "Tx",
-               "Data Type": "double"
-            },
-            {
-               "Variable Name": "PosN",
-               "I/O Role": "OUTPUT",
-               "IPC Role": "Tx",
-               "Data Type": "double",
-               "Array Size": "3"
-            },
-            {
-               "Variable Name": "VelN",
-               "I/O Role": "OUTPUT",
-               "IPC Role": "Tx",
-               "Data Type": "double",
-               "Array Size": "3"
-            },
-            {
-               "Variable Name": "PosW",
-               "I/O Role": "OUTPUT",
-               "IPC Role": "Tx",
-               "Data Type": "double",
-               "Array Size": "3"
-            },
-            {
-               "Variable Name": "VelW",
-               "I/O Role": "OUTPUT",
-               "IPC Role": "Tx",
-               "Data Type": "double",
-               "Array Size": "3"
-            }
          ]
       },
       {
          "Table Name": "AccelType",
          "Table Type": "Structure",
          "Table Data": [
-            {
-               "Variable Name": "TrueAcc",
-               "I/O Role": "OUTPUT",
-               "IPC Role": "Tx",
-               "Data Type": "double",
-               "Description": "m/s^2"
-            }
          ]
       },
       {
@@ -474,20 +369,6 @@
                "Array Size": "3",
                "Units": "m/s",
                "Description": "Velocity of cm wrt R , expressed in N"
-            },
-            {
-               "Variable Name": "PosN",
-               "I/O Role": "OUTPUT",
-               "Data Type": "double",
-               "Array Size": "3",
-               "Description": "Position of cm wrt origin of N, m, expressed in N"
-            },
-            {
-               "Variable Name": "VelN",
-               "I/O Role": "OUTPUT",
-               "Data Type": "double",
-               "Array Size": "3",
-               "Description": "Velocity of cm wrt origin of N, m/sec, expressed in N"
             },
             {
                "Variable Name": "svb",
@@ -718,130 +599,6 @@
          "Table Name": "ConstellationType",
          "Table Type": "Structure",
          "Table Data": [
-         ]
-      },
-      {
-         "Table Name": "AntPattType",
-         "Table Type": "Structure",
-         "Table Data": [
-         ]
-      },
-      {
-         "Table Name": "CommLinkType",
-         "Table Type": "Structure",
-         "Table Data": [
-            {
-               "Variable Name": "Doppler",
-               "I/O Role": "OUTPUT",
-               "IPC Role": "TxRx",
-               "Data Type": "double",
-               "Units": "Hz",
-               "Description": "Carrier Frequency Shift"
-            },
-            {
-               "Variable Name": "Loss",
-               "I/O Role": "OUTPUT",
-               "Data Type": "double",
-               "Units": "dB"
-            },
-            {
-               "Variable Name": "Delay",
-               "I/O Role": "OUTPUT",
-               "IPC Role": "TxRx",
-               "Data Type": "double",
-               "Units": "sec"
-            },
-            {
-               "Variable Name": "Carrier",
-               "I/O Role": "OUTPUT",
-               "IPC Role": "TxRx",
-               "Data Type": "double",
-               "Units": "dBw"
-            },
-            {
-               "Variable Name": "Noise",
-               "I/O Role": "OUTPUT",
-               "Data Type": "double",
-               "Units": "dBw"
-            },
-            {
-               "Variable Name": "CNR",
-               "I/O Role": "OUTPUT",
-               "IPC Role": "TxRx",
-               "Data Type": "double",
-               "Units": "dB",
-               "Description": "Carrier to Noise ratio"
-            },
-            {
-               "Variable Name": "EIRP",
-               "I/O Role": "OUTPUT",
-               "Data Type": "double",
-               "Units": "dBw"
-            },
-            {
-               "Variable Name": "PowerFluxDensity",
-               "I/O Role": "OUTPUT",
-               "Data Type": "double",
-               "Units": "dBw"
-            },
-            {
-               "Variable Name": "Range",
-               "I/O Role": "OUTPUT",
-               "IPC Role": "TxRx",
-               "Data Type": "double",
-               "Units": "m"
-            },
-            {
-               "Variable Name": "RangeRate",
-               "I/O Role": "OUTPUT",
-               "IPC Role": "TxRx",
-               "Data Type": "double",
-               "Units": "m/s"
-            },
-            {
-               "Variable Name": "TxAntGain",
-               "I/O Role": "OUTPUT",
-               "Data Type": "double",
-               "Units": "dB"
-            },
-            {
-               "Variable Name": "RxAntGain",
-               "I/O Role": "OUTPUT",
-               "Data Type": "double",
-               "Units": "dB"
-            },
-            {
-               "Variable Name": "TxOcculted",
-               "I/O Role": "OUTPUT",
-               "Data Type": "long"
-            },
-            {
-               "Variable Name": "RxOcculted",
-               "I/O Role": "OUTPUT",
-               "Data Type": "long"
-            },
-            {
-               "Variable Name": "PathIsOcculted",
-               "I/O Role": "OUTPUT",
-               "IPC Role": "TxRx",
-               "Data Type": "long"
-            },
-            {
-               "Variable Name": "AtmoNoise",
-               "I/O Role": "STRUCT",
-               "Data Type": "RandomProcessType",
-               "Array Size": ""
-            },
-            {
-               "Variable Name": "TxAntPatt",
-               "I/O Role": "STRUCT",
-               "Data Type": "AntPattType"
-            },
-            {
-               "Variable Name": "RxAntPatt",
-               "I/O Role": "STRUCT",
-               "Data Type": "AntPattType"
-            }
          ]
       },
       {

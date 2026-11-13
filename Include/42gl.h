@@ -28,11 +28,6 @@
 ** #endif
 */
 
-#define CAM_FONT 0
-#define MAP_FONT 1
-#define ORRERY_FONT 2
-#define SPHERE_FONT 3
-
 #define CAM_MENU_SIZE 18
 #define N_AXES 0
 #define L_AXES 1
@@ -59,6 +54,12 @@
 #define MAP_CREDITS 2
 #define MAP_NIGHT 3
 
+#define MONOCULAR 0
+#define LEFTEYE 1
+#define RIGHTEYE 2
+#define ONSCREEN 0
+#define OFFSCREEN 1
+
 EXTERN long MapWindowExists, OrreryWindowExists,SphereWindowExists;
 
 EXTERN double RunTime,FrameRate,RealTimeDT;
@@ -69,13 +70,14 @@ EXTERN double MouseClickX,MouseClickY;
 EXTERN long PauseFlag;
 EXTERN long PausedByMouse;
 EXTERN long MouseDown;
-EXTERN char CamTitle[81];
+EXTERN long CamWidth, CamHeight;
+EXTERN char CamTitle[80];
 EXTERN long CamShow[CAM_MENU_SIZE];
-EXTERN char CamShowLabel[CAM_MENU_SIZE][41];
+EXTERN char CamShowLabel[CAM_MENU_SIZE][40];
 EXTERN long MapWidth, MapHeight;
-EXTERN char MapTitle[81];
+EXTERN char MapTitle[80];
 EXTERN long MapShow[MAP_MENU_SIZE];
-EXTERN char MapShowLabel[MAP_MENU_SIZE][41];
+EXTERN char MapShowLabel[MAP_MENU_SIZE][40];
 EXTERN long ShowHUD;
 EXTERN double MouseScaleFactor;
 EXTERN long CaptureCam, CamFrame;
@@ -103,7 +105,7 @@ EXTERN GLuint FortyTwoWatermarkTexTag;
 
 EXTERN long OrreryWidth;
 EXTERN long OrreryHeight;
-EXTERN char OrreryTitle[41];
+EXTERN char OrreryTitle[40];
 EXTERN struct OrreryPOVType Orrery;
 EXTERN GLuint OrrerySphereList;
 EXTERN GLuint OrreryRingList;
@@ -117,7 +119,7 @@ EXTERN GLuint LogoTexTag;
 EXTERN GLuint SphereSunSpriteTexTag;
 EXTERN GLuint SphereMoonSpriteTexTag;
 
-EXTERN char StarCatFileName[81];
+EXTERN char StarCatFileName[80];
 EXTERN double BuckyPf[32][3];
 EXTERN long BuckyNeighbor[32][6];
 
@@ -207,6 +209,7 @@ EXTERN GLuint SkyCube;
 EXTERN GLuint NoiseTex;
 
 EXTERN long ShadowsEnabled;
+EXTERN long VREnabled;
 EXTERN long SeeThruPassNeeded;
 EXTERN GLfloat ShadowMatrix[16];
 
@@ -217,20 +220,18 @@ EXTERN GLfloat LightPosN[4];
 EXTERN GLfloat ShadowFromNMatrix[16]; /* 4x4 Matrix transforms from N frame to Shadow Texture space */
 EXTERN GLfloat CNE[9]; /* DCM between N and Eye frame */
 
+
 EXTERN char Banner[120];
 EXTERN GLfloat BannerColor[4];
 
-EXTERN struct POVType *CurrentCameraPOV;
-
-void MeshToDisplayLists(struct MeshType *M);
-void UpdatePOV(struct POVType *POV);
+void GeomToDisplayLists(struct GeomType *G);
+void UpdatePOV(void);
 void CamRenderExec(void);
 void DrawMap(void);
 void DrawOrrery(void);
 void DrawUnitSphere(void);
-void DrawCamera(void);
-void SetPovOrientation(struct POVType *POV);
-void InitCamWidgets(struct POVType *POV);
+void SetPovOrientation(void);
+void InitCamWidgets(void);
 void InitOrreryWidget(void);
 void InitSphereWidgets(void);
 void LoadShadowMapFBO(void);
@@ -243,7 +244,6 @@ void ReadGraphicsInpFile(void);
 void LoadFOVs(void);
 void InitColors(void);
 
-void InitCameraWindow(struct CameraType *Cam);
 
 /*
 ** #ifdef __cplusplus

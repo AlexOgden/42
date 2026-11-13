@@ -79,7 +79,7 @@ void FindUnshadedAreas(struct SCType *S, double DirVecN[3])
       struct SilVtxType *InVtx = NULL;
       struct SilVtxType *ClipVtx;
       struct BodyType *B;
-      struct MeshType *G;
+      struct GeomType *G;
       struct EdgeType *E;
       struct PolyType *P;
       double DirVecB[3],DoN1,DoN2;
@@ -99,7 +99,7 @@ void FindUnshadedAreas(struct SCType *S, double DirVecN[3])
       SilNe = 0;
       for(Ib=0;Ib<S->Nb;Ib++) {
          B = &S->B[Ib];
-         G = &Mesh[B->MeshTag];
+         G = &Geom[B->GeomTag];
          MxV(B->CN,DirVecN,DirVecB);
          for(Ie=0;Ie<G->Nedge;Ie++) {
             E = &G->Edge[Ie];
@@ -111,10 +111,6 @@ void FindUnshadedAreas(struct SCType *S, double DirVecN[3])
                }
                else {
                   SilEdge = (struct SilEdgeType *) realloc(SilEdge,(SilNe+1)*sizeof(struct SilEdgeType));
-                  if (SilEdge==NULL) {
-                     printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
-                     exit(1);
-                  }
                }
                SE = &SilEdge[SilNe];
                SE->Body = Ib;
@@ -157,10 +153,6 @@ void FindUnshadedAreas(struct SCType *S, double DirVecN[3])
       }
       /* Form list of vertices, closing loops as needed */
       SilVtx = (struct SilVtxType *) calloc(1,sizeof(struct SilVtxType));
-      if (SilVtx==NULL) {
-         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
-         exit(1);
-      }
       SilNv = 1;
       SilVtx[0].Body = SilEdge[0].Body;
       for(i=0;i<3;i++) {
@@ -171,10 +163,6 @@ void FindUnshadedAreas(struct SCType *S, double DirVecN[3])
          if (SilEdge[Ie+1].Body == SilEdge[Ie].Body
           && SilEdge[Ie+1].Iv1 == SilEdge[Ie].Iv2) {
             SilVtx = (struct SilVtxType *) realloc(SilVtx,(SilNv+1)*sizeof(struct SilVtxType));
-            if (SilVtx==NULL) {
-               printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
-               exit(1);
-            }
             SilVtx[SilNv].Body = SilEdge[Ie].Body;
             for(i=0;i<3;i++) {
                SilVtx[SilNv].PosB[i] = SilEdge[Ie].PosV2B[i];
@@ -184,10 +172,6 @@ void FindUnshadedAreas(struct SCType *S, double DirVecN[3])
          }
          else {
             SilVtx = (struct SilVtxType *) realloc(SilVtx,(SilNv+2)*sizeof(struct SilVtxType));
-            if (SilVtx==NULL) {
-               printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
-               exit(1);
-            }
             SilVtx[SilNv].Body = SilEdge[Ie].Body;
             for(i=0;i<3;i++) {
                SilVtx[SilNv].PosB[i] = SilEdge[Ie].PosV2B[i];
@@ -203,10 +187,6 @@ void FindUnshadedAreas(struct SCType *S, double DirVecN[3])
          }
       }
       SilVtx = (struct SilVtxType *) realloc(SilVtx,(SilNv+1)*sizeof(struct SilVtxType));
-      if (SilVtx==NULL) {
-         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
-         exit(1);
-      }
       SilVtx[SilNv].Body = SilEdge[SilNe-1].Body;
       for(i=0;i<3;i++) {
          SilVtx[SilNv].PosB[i] = SilEdge[SilNe-1].PosV2B[i];
@@ -217,7 +197,7 @@ void FindUnshadedAreas(struct SCType *S, double DirVecN[3])
 /* .. Find unshaded areas, centroids */
       for(Ib=0;Ib<S->Nb;Ib++) {
          B = &S->B[Ib];
-         G = &Mesh[B->MeshTag];
+         G = &Geom[B->GeomTag];
          MxV(B->CN,DirVecN,DirVecB);
          for(Ipoly=0;Ipoly<G->Npoly;Ipoly++) {
             P = &G->Poly[Ipoly];
@@ -236,10 +216,6 @@ void FindUnshadedAreas(struct SCType *S, double DirVecN[3])
                if (SilNv > 0) {
                   free(InVtx);
                   InVtx = (struct SilVtxType *) calloc(SilNv,sizeof(struct SilVtxType));
-                  if (InVtx==NULL) {
-                     printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
-                     exit(1);
-                  }
                   memcpy(InVtx,SilVtx,SilNv*sizeof(struct SilVtxType));
                }
                SilNin = SilNv;
@@ -259,10 +235,6 @@ void FindUnshadedAreas(struct SCType *S, double DirVecN[3])
                               DirVecN,OutVtx);
                            if (Nout > 0) {
                               ClipVtx = (struct SilVtxType *) realloc(ClipVtx,(SilNc+Nout)*sizeof(struct SilVtxType));
-                              if (ClipVtx==NULL) {
-                                 printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
-                                 exit(1);
-                              }
                               for(Iout=0;Iout<Nout;Iout++) {
                                  ClipVtx[SilNc+Iout].Body = B1;
                                  for(i=0;i<3;i++) {
@@ -278,10 +250,6 @@ void FindUnshadedAreas(struct SCType *S, double DirVecN[3])
                      if (SilNc > 0) {
                         free(InVtx);
                         InVtx = (struct SilVtxType *) calloc(SilNc,sizeof(struct SilVtxType));
-                        if (InVtx==NULL) {
-                           printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
-                           exit(1);
-                        }
                         memcpy(InVtx,ClipVtx,SilNc*sizeof(struct SilVtxType));
                      }
                      SilNin = SilNc;
@@ -362,7 +330,7 @@ void GravGradFrcTrq(struct SCType *S)
       if ((O->Regime == ORB_ZERO || O->Regime == ORB_FLIGHT) &&
            O->PolyhedronGravityEnabled) {
          W = &World[O->World];
-         PolyhedronGravGrad(&Mesh[W->MeshTag],W->Density,S->PosN,W->CWN,
+         PolyhedronGravGrad(&Geom[W->GeomTag],W->Density,S->PosN,W->CWN,
             GravGradN);
 
          if (S->Nb == 1) {
@@ -528,7 +496,7 @@ void AeroFrcTrq(struct SCType *S)
       long Ipoly;
       long OrbCenter;
       struct BodyType *B;
-      struct MeshType *G;
+      struct GeomType *G;
       struct PolyType *P;
 
       OrbCenter = Orb[S->RefOrb].World;
@@ -555,7 +523,7 @@ void AeroFrcTrq(struct SCType *S)
          /* Find total projected area and cp for Body */
          Area = 0.0;
          for(i=0;i<3;i++) cp[i] = 0.0;
-         G = &Mesh[B->MeshTag];
+         G = &Geom[B->GeomTag];
          for(Ipoly=0;Ipoly<G->Npoly;Ipoly++) {
             P = &G->Poly[Ipoly];
                if (strncmp(Matl[P->Matl].Label,"SHADED",6)) { /* Aero doesn't see shaded polys */
@@ -590,7 +558,7 @@ void SolPressFrcTrq(struct SCType *S)
       long Ipoly;
       double svb[3],SoN,Coef,r[3],Fb[3],Fn[3],Tb[3],SolarPressure;
       struct BodyType *B;
-      struct MeshType *G;
+      struct GeomType *G;
       struct PolyType *P;
       struct MatlType *M;
 
@@ -606,7 +574,7 @@ void SolPressFrcTrq(struct SCType *S)
 /* .. Find Force and Torque on each Body */
          for(Ib=0;Ib<S->Nb;Ib++) {
             B = &S->B[Ib];
-            G = &Mesh[B->MeshTag];
+            G = &Geom[B->GeomTag];
 
             /* Find force and torque on each illuminated polygon */
             for(Ipoly=0;Ipoly<G->Npoly;Ipoly++) {
@@ -681,7 +649,7 @@ void FindPosVelR(struct SCType *S,struct BodyType *B, double PosB[3],
 void BodyRgnContactFrcTrq(struct SCType *S, long Ibody,
    struct RegionType *R)
 {
-      struct MeshType *Gb,*Gr;
+      struct GeomType *Gb,*Gr;
       struct BodyType *B;
       struct PolyType *Pb,*Pr;
       struct EdgeType *E;
@@ -701,8 +669,8 @@ void BodyRgnContactFrcTrq(struct SCType *S, long Ibody,
       double MaxMagFrc;
 
       B = &S->B[Ibody];
-      Gb = &Mesh[B->MeshTag];
-      Gr = &Mesh[R->MeshTag];
+      Gb = &Geom[B->GeomTag];
+      Gr = &Geom[R->GeomTag];
 
       for(i=0;i<3;i++) {
          FrcN[i] = 0.0;
@@ -816,7 +784,7 @@ void BodyRgnContactFrcTrq(struct SCType *S, long Ibody,
 void BodyBodyContactFrcTrq(struct SCType *Sa, long Ibody,
    struct SCType *Sb, long Jbody)
 {
-      struct MeshType *Ga,*Gb;
+      struct GeomType *Ga,*Gb;
       struct BodyType *Ba,*Bb;
       struct PolyType *Pa,*Pb;
       struct OctreeType *Oa,*Ob;
@@ -842,8 +810,8 @@ void BodyBodyContactFrcTrq(struct SCType *Sa, long Ibody,
 
       Ba = &Sa->B[Ibody];
       Bb = &Sb->B[Jbody];
-      Ga = &Mesh[Ba->MeshTag];
-      Gb = &Mesh[Bb->MeshTag];
+      Ga = &Geom[Ba->GeomTag];
+      Gb = &Geom[Bb->GeomTag];
       Oa = Ga->Octree;
       Ob = Gb->Octree;
 
@@ -963,7 +931,7 @@ void ContactFrcTrq(struct SCType *S)
       struct RegionType *R;
       struct SCType *Sc;
       struct BodyType *Bi,*Bj;
-      struct MeshType *Gi,*Gj;
+      struct GeomType *Gi,*Gj;
       double dx[3],cmb[3],cmni[3],cmnj[3];
       long Ir,i,Ib,Isc,Jb;
       
@@ -976,7 +944,7 @@ void ContactFrcTrq(struct SCType *S)
          if (!R->Exists) continue;
          if (R->World != O->World) continue;
          for(i=0;i<3;i++) dx[i] = S->PosN[i] - R->PosN[i];
-         if (MAGV(dx) > S->BBox.radius + Mesh[R->MeshTag].BBox.radius) continue;
+         if (MAGV(dx) > S->BBox.radius + Geom[R->GeomTag].BBox.radius) continue;
 
          /* Check each body vs Region */
          for(Ib=0;Ib<S->Nb;Ib++) {
@@ -997,13 +965,13 @@ void ContactFrcTrq(struct SCType *S)
          /* Check each body of S vs each body of Sc */
          for(Ib=0;Ib<S->Nb;Ib++) {
             Bi = &S->B[Ib];
-            Gi = &Mesh[Bi->MeshTag];
+            Gi = &Geom[Bi->GeomTag];
             for(i=0;i<3;i++) cmb[i] = Bi->cm[i] - Gi->BBox.center[i];
             MTxV(Bi->CN,cmb,cmni);
             for(Jb=0;Jb<Sc->Nb;Jb++) {
                /* Cheap Bi/Bj proximity checks */
                Bj = &Sc->B[Jb];
-               Gj = &Mesh[Bj->MeshTag];
+               Gj = &Geom[Bj->GeomTag];
                for(i=0;i<3;i++) cmb[i] = Bj->cm[i] - Gj->BBox.center[i];
                MTxV(Bj->CN,cmb,cmnj);
                for(i=0;i<3;i++)

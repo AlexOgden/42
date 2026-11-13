@@ -81,7 +81,6 @@ long AdvanceTime(void)
       static long PrevTick = 0;
       static long CurrTick = 1;
       long Done;
-      struct timespec SleepDuration;
 
       /* Advance time to next Timestep */
       switch (TimeMode) {
@@ -109,15 +108,7 @@ long AdvanceTime(void)
 
             break;
          case REAL_TIME :
-            if (DTSIM < 1.0) {
-               SleepDuration.tv_sec = (time_t) 0.0;
-               SleepDuration.tv_nsec = (long) (1.0E9*DTSIM);
-            }
-            else {
-               SleepDuration.tv_sec = (time_t) floor(DTSIM);
-               SleepDuration.tv_nsec = (long) (1.0E9*(DTSIM-floor(DTSIM)));
-            }
-            nanosleep(&SleepDuration,NULL);
+            usleep(1.0E6*DTSIM);
             SimTime += DTSIM;
             itime = (long) ((SimTime+0.5*DTSIM)/(DTSIM));
             SimTime = ((double) itime)*DTSIM;
@@ -170,29 +161,24 @@ long AdvanceTime(void)
 
             break;
          case NOS3_TIME :
-            #if (defined(__APPLE__) || defined(__linux__))
-               NOS3Time(&UTC.Year,&UTC.doy,&UTC.Month,&UTC.Day,
-                  &UTC.Hour,&UTC.Minute,&UTC.Second);
-               CivilTime = DateToTime(UTC.Year,UTC.Month,UTC.Day,
-                  UTC.Hour,UTC.Minute,UTC.Second);
-               AtomicTime = CivilTime + LeapSec;
-               DynTime = AtomicTime + 32.184;
-               GpsTime = AtomicTime - 19.0;
+            NOS3Time(&UTC.Year,&UTC.doy,&UTC.Month,&UTC.Day,
+               &UTC.Hour,&UTC.Minute,&UTC.Second);
+            CivilTime = DateToTime(UTC.Year,UTC.Month,UTC.Day,
+               UTC.Hour,UTC.Minute,UTC.Second);
+            AtomicTime = CivilTime + LeapSec;
+            DynTime = AtomicTime + 32.184;
+            GpsTime = AtomicTime - 19.0;
 
-               TT.JulDay = TimeToJD(DynTime);
-               TimeToDate(DynTime,&TT.Year,&TT.Month,&TT.Day,
-                  &TT.Hour,&TT.Minute,&TT.Second,DTSIM);
-               TT.doy = MD2DOY(TT.Year,TT.Month,TT.Day);
+            TT.JulDay = TimeToJD(DynTime);
+            TimeToDate(DynTime,&TT.Year,&TT.Month,&TT.Day,
+               &TT.Hour,&TT.Minute,&TT.Second,DTSIM);
+            TT.doy = MD2DOY(TT.Year,TT.Month,TT.Day);
 
-               UTC.JulDay = TimeToJD(CivilTime);
-               UTC.doy = MD2DOY(UTC.Year,UTC.Month,UTC.Day);
+            UTC.JulDay = TimeToJD(CivilTime);
+            UTC.doy = MD2DOY(UTC.Year,UTC.Month,UTC.Day);
 
-               GpsTimeToGpsDate(GpsTime,&GpsRollover,&GpsWeek,&GpsSecond);
-               SimTime = DynTime - DynTime0;
-            #else
-               printf("NOS3 time mode not supported on Windows.\n");
-               exit(1);
-            #endif
+            GpsTimeToGpsDate(GpsTime,&GpsRollover,&GpsWeek,&GpsSecond);
+            SimTime = DynTime - DynTime0;
             break;
       }
 
@@ -210,7 +196,7 @@ void UpdateScBoundingBox(struct SCType *S)
 #define REFPT_CM 0
       struct BodyType *B, *B0;
       struct BoundingBoxType *BBox;
-      struct MeshType *M;
+      struct GeomType *G;
       double ctrB[3],ctrN[3],ctrB0[3],maxB0,minB0,r[3];
       long Ib,i;
 
@@ -219,9 +205,9 @@ void UpdateScBoundingBox(struct SCType *S)
 
       for(Ib=0;Ib<S->Nb;Ib++) {
          B = &S->B[Ib];
-         M = &Mesh[B->MeshTag];
+         G = &Geom[B->GeomTag];
          for(i=0;i<3;i++) {
-            ctrB[i] = M->BBox.center[i];
+            ctrB[i] = G->BBox.center[i];
             if (S->RefPt == REFPT_CM) {
                ctrB[i] -= B->cm[i];
             }
@@ -235,8 +221,8 @@ void UpdateScBoundingBox(struct SCType *S)
             if (S->RefPt == REFPT_CM) {
                ctrB0[i] += B0->cm[i];
             }
-            maxB0 = ctrB0[i] + M->BBox.radius;
-            minB0 = ctrB0[i] - M->BBox.radius;
+            maxB0 = ctrB0[i] + G->BBox.radius;
+            minB0 = ctrB0[i] - G->BBox.radius;
             if(BBox->max[i] < maxB0) BBox->max[i] = maxB0;
             if(BBox->min[i] > minB0) BBox->min[i] = minB0;
          }
@@ -347,7 +333,6 @@ long SimStep(void)
                PartitionForces(S); /* Orbit-affecting and "internal" */
             }
          }
-         CommLinkPerformance();
          Report();  /* File Output */
       }
 
@@ -381,7 +366,6 @@ long SimStep(void)
             PartitionForces(S); /* Orbit-affecting and "internal" */
          }
       }
-      CommLinkPerformance();
       Report();  /* File Output */
 
       /* Exit when Stoptime is reached */
@@ -434,18 +418,16 @@ int exec(int argc,char **argv)
          }
       #endif
 
-/*
-      printf("\n\nMap Time = %lf sec\n",MapTime);
-      printf("Joint Partial Time = %lf sec\n",JointTime);
-      printf("Path Time = %lf sec\n",PathTime);
-      printf("PVel Time = %lf sec\n",PVelTime);
-      printf("FrcTrq Time = %lf sec\n",FrcTrqTime);
-      printf("Assemble Time = %lf sec\n",AssembleTime);
-      printf("Lock Time = %lf sec\n",LockTime);
-      printf("Triangularize Time = %lf sec\n",TriangleTime);
-      printf("Fwd Substitution Time = %lf sec\n",SubstTime);
-      printf("Solve Time = %lf sec\n",SolveTime);
-*/
+      //printf("\n\nMap Time = %lf sec\n",MapTime);
+      //printf("Joint Partial Time = %lf sec\n",JointTime);
+      //printf("Path Time = %lf sec\n",PathTime);
+      //printf("PVel Time = %lf sec\n",PVelTime);
+      //printf("FrcTrq Time = %lf sec\n",FrcTrqTime);
+      //printf("Assemble Time = %lf sec\n",AssembleTime);
+      //printf("Lock Time = %lf sec\n",LockTime);
+      //printf("Triangularize Time = %lf sec\n",TriangleTime);
+      //printf("Fwd Substitution Time = %lf sec\n",SubstTime);
+      //printf("Solve Time = %lf sec\n",SolveTime);
       return(0);
 }
 

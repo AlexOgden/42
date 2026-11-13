@@ -142,8 +142,6 @@ long DecodeString(char *s)
       else if (!strcmp(s,"CMG_FSW")) return CMG_FSW;
       else if (!strcmp(s,"THR_FSW")) return THR_FSW;
       else if (!strcmp(s,"CFS_FSW")) return CFS_FSW;
-      else if (!strcmp(s,"HEXAPOD_FSW")) return HEXAPOD_FSW;
-      else if (!strcmp(s,"LUNARCOMM_FSW")) return LUNARCOMM_FSW;
 
       else if (!strcmp(s,"PHOBOS")) return PHOBOS;
       else if (!strcmp(s,"DEIMOS")) return DEIMOS;
@@ -244,13 +242,7 @@ long DecodeString(char *s)
       else if (!strcmp(s,"CONCAVE")) return OPT_CONCAVE;
       else if (!strcmp(s,"CONVEX")) return OPT_CONVEX;
       
-      else if (!strcmp(s,"UPLINK")) return UPLINK;
-      else if (!strcmp(s,"DOWNLINK")) return DOWNLINK;
-      else if (!strcmp(s,"CROSSLINK")) return CROSSLINK;
-
-      else if (!strcmp(s,"RGB")) return PIX_RGB;
-      else if (!strcmp(s,"RGBA")) return PIX_RGBA;
-      else if (!strcmp(s,"DEPTH")) return PIX_DEPTH;
+      
 
       else {
          printf("Bogus input %s in DecodeString (42init.c:%d)\n",s,__LINE__);
@@ -268,7 +260,7 @@ void EchoDyn(struct SCType *S)
       struct JointType *G;
       long i,j,Ib,Ig,Nf;
 
-      if (Nsc == 1) strcpy(Fmt,"\0");
+      if (Nsc == 1) sprintf(Fmt,"");
       else if (Nsc <= 10) sprintf(Fmt,"%1ld",S->ID);
       else sprintf(Fmt,"%02ld",S->ID);
       sprintf(OutFileName,"Dyn%s.42",Fmt);
@@ -413,7 +405,7 @@ long LoadTRVfromFile(const char *Path, const char *TrvFileName,
    const char *ElemLabel, double Time, struct OrbitType *O)
 {
       FILE *infile;
-      char line[121],response1[121],response2[121];
+      char line[80],response1[80],response2[80];
       char Label[25];
       long i,Nchar;
       long Success = 0;
@@ -430,12 +422,12 @@ long LoadTRVfromFile(const char *Path, const char *TrvFileName,
          if (sscanf(line,"\"%[^\"]\"",Label) == 1) {
             if (!strncmp(Label,ElemLabel,Nchar)) {
                Success = 1;
-               ScanLine(infile,"%120s %120s %ld-%ld-%ld %ld:%ld:%lf",8,
+               fscanf(infile,"%s %s %ld-%ld-%ld %ld:%ld:%lf\n",
                   response1,response2,
                   &EpochYear,&EpochMonth,&EpochDay,
                   &EpochHour,&EpochMinute,&EpochSecond);
-               ScanLine(infile,"%lf %lf %lf",3,&R[0],&R[1],&R[2]);
-               ScanLine(infile,"%lf %lf %lf",3,&V[0],&V[1],&V[2]);
+               fscanf(infile,"%lf %lf %lf\n",&R[0],&R[1],&R[2]);
+               fscanf(infile,"%lf %lf %lf\n",&V[0],&V[1],&V[2]);
             }
          }
       }
@@ -481,8 +473,7 @@ long LoadTRVfromFile(const char *Path, const char *TrvFileName,
 void InitOrbit(struct OrbitType *O)
 {
       FILE *infile;
-
-      char response[121];
+      char junk[120],newline,response[120];
       double Alt1,Alt2,MaxAnom;
       double mu,rad,J2;
       double p[3],Ang1,Ang2,Ang3;
@@ -494,31 +485,25 @@ void InitOrbit(struct OrbitType *O)
       double AmpZ,PhiZ;
       struct RegionType *R;
       long InputType,UsePA,ElementType;
-      char ElementLabel[41];
-      char ElementFileName[41];
+      char ElementLabel[40];
+      char ElementFileName[40];
       long Success;
-      long NodeYear,NodeDOY,NodeMonth,NodeDay,NodeHour,NodeMin;
+      long NodeYear,NodeMonth,NodeDay,NodeHour,NodeMin;
       double NodeSec;
-      char SplineLine[256];
-      long NumMonDay,NumDOY;
-      char sep;
-      //char MonDayFmt[121] = " %4ld%[ ,/:-]%ld%[ ,/:-]%ld%[ ,/:T-]%ld:%ld:%lf %lf %lf %lf %lf %lf %lf";
-      char MonDayFmt[121] = " %4ld%c%ld%c%ld%c%ld:%ld:%lf %lf %lf %lf %lf %lf %lf";
-      char DOYFmt[121] =    " %4ld%[ ,/:-]%ld%[ ,/:T-]%ld:%ld:%lf %lf %lf %lf %lf %lf %lf";
 
       infile = FileOpen(InOutPath,O->FileName,"r");
 
 /* .. Orbit Parameters */
       O->Epoch = DynTime;
       O->SplineActive = FALSE;
-      ScanLine(infile,"",0,NULL);
-      ScanLine(infile,"",0,NULL);
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
       O->Regime = DecodeString(response);
 
       if (O->Regime == ORB_ZERO) {
-         ScanLine(infile,"",0,NULL);
-         ScanLine(infile,"%120s",1,response);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+         fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
          O->World = DecodeString(response);
          if (!World[O->World].Exists) {
             printf("Oops.  Orbit %ld depends on a World that doesn't exist.\n",O->Tag);
@@ -532,16 +517,16 @@ void InitOrbit(struct OrbitType *O)
             O->CLN[j][j] = 1.0;
             O->wln[j] = 0.0;
          }
-         ScanLine(infile,"%120s",1,response);
+         fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
          O->PolyhedronGravityEnabled = DecodeString(response);
          /* Skip FLIGHT, CENTRAL, THREE_BODY sections */
-         for(j=0;j<36;j++) ScanLine(infile,"",0,NULL);
+         for(j=0;j<36;j++) fscanf(infile,"%[^\n] %[\n]",junk,&newline);
       }
       else if (O->Regime == ORB_FLIGHT) {
          /* Skip ZERO section */
-         for(j=0;j<3;j++) ScanLine(infile,"",0,NULL);
-         ScanLine(infile,"",0,NULL);
-         ScanLine(infile,"%ld",1,&Ir);
+         for(j=0;j<3;j++) fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+         fscanf(infile,"%ld %[^\n] %[\n]",&Ir,junk,&newline);
          if (!Rgn[Ir].Exists) {
             printf("Oops.  Orbit %ld depends on a Region that doesn't exist.\n",O->Tag);
             exit(1);
@@ -558,41 +543,42 @@ void InitOrbit(struct OrbitType *O)
          O->wln[0] = 0.0;
          O->wln[1] = 0.0;
          O->wln[2] = World[O->World].w;
-         ScanLine(infile,"%120s",1,response);
+         fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
          O->PolyhedronGravityEnabled = DecodeString(response);
 
          /* Skip CENTRAL and THREE_BODY sections */
-         for(j=0;j<33;j++) ScanLine(infile,"",0,NULL);
+         for(j=0;j<33;j++) fscanf(infile,"%[^\n] %[\n]",junk,&newline);
       }
       else if (O->Regime == ORB_CENTRAL) {
          /* Skip ZERO and FLIGHT sections */
-         for(j=0;j<6;j++) ScanLine(infile,"",0,NULL);
+         for(j=0;j<6;j++) fscanf(infile,"%[^\n] %[\n]",junk,&newline);
 
-         ScanLine(infile,"",0,NULL);
-         ScanLine(infile,"%120s",1,response);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+         fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
          O->World = DecodeString(response);
          if (!World[O->World].Exists) {
             printf("Oops.  Orbit %ld depends on a World that doesn't exist.\n",O->Tag);
             exit(1);
          }
-         ScanLine(infile,"%120s",1,response);
+         fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
          O->J2DriftEnabled = DecodeString(response);
          mu = World[O->World].mu;
          rad = World[O->World].rad;
          J2 = World[O->World].J2;
          O->mu=mu;
-         ScanLine(infile,"%120s",1,response);
+         fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
          InputType = DecodeString(response);
          if (InputType == INP_KEPLER) {
-            ScanLine(infile,"%120s",1,response);
+            fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
             UsePA = DecodeString(response);
             if (UsePA) {
-               ScanLine(infile,"%lf %lf",2,&Alt1,&Alt2);
+               fscanf(infile,"%lf %lf %[^\n] %[\n]",&Alt1,&Alt2,
+                      junk,&newline);
                if (Alt2 < Alt1) {
                   printf("Apoapsis below Periapsis for Orbit %ld\n",O->Tag);
                   exit(1);
                }
-               ScanLine(infile,"",0,NULL);
+               fscanf(infile,"%[^\n] %[\n]",junk,&newline);
                O->SMA=rad+0.5*(Alt1+Alt2)*1.0E3;
                O->ecc=1.0E3*fabs(Alt1-Alt2)/(2.0*O->SMA);
                O->SLR = O->SMA*(1.0-O->ecc*O->ecc);
@@ -601,8 +587,9 @@ void InitOrbit(struct OrbitType *O)
                O->MeanMotion = sqrt(O->mu*O->alpha)*O->alpha;
             }
             else {
-               ScanLine(infile,"",0,NULL);
-               ScanLine(infile,"%lf %lf",2,&Alt1,&O->ecc);
+               fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+               fscanf(infile,"%lf %lf %[^\n] %[\n]",
+                      &Alt1,&O->ecc,junk,&newline);
                O->rmin = rad+Alt1*1.0E3;
                O->SLR = O->rmin*(1.0+O->ecc);
                O->alpha = (1.0-O->ecc)/O->rmin;
@@ -610,10 +597,10 @@ void InitOrbit(struct OrbitType *O)
                if (O->alpha > 0.0) O->MeanMotion = sqrt(O->mu*O->alpha)*O->alpha;
                else O->MeanMotion = sqrt(-O->mu*O->alpha)*O->alpha;
             }
-            ScanLine(infile,"%lf",1,&O->inc);
-            ScanLine(infile,"%lf",1,&O->RAAN);
-            ScanLine(infile,"%lf",1,&O->ArgP);
-            ScanLine(infile,"%lf",1,&O->anom);
+            fscanf(infile,"%lf %[^\n] %[\n]",&O->inc,junk,&newline);
+            fscanf(infile,"%lf %[^\n] %[\n]",&O->RAAN,junk,&newline);
+            fscanf(infile,"%lf %[^\n] %[\n]",&O->ArgP,junk,&newline);
+            fscanf(infile,"%lf %[^\n] %[\n]",&O->anom,junk,&newline);
             O->inc *= D2R;
             O->RAAN *= D2R;
             O->ArgP *= D2R;
@@ -637,15 +624,17 @@ void InitOrbit(struct OrbitType *O)
                    O->PosN,O->VelN,&O->anom);
 
             /* Skip RV and FILE */
-            for(j=0;j<5;j++) ScanLine(infile,"",0,NULL);
+            for(j=0;j<5;j++) fscanf(infile,"%[^\n] %[\n]",junk,&newline);
          }
          else if (InputType == INP_POSVEL) {
             /* Skip KEPLER section */
-            for(j=0;j<7;j++) ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%lf %lf %lf",3,
-               &O->PosN[0],&O->PosN[1],&O->PosN[2]);
-            ScanLine(infile,"%lf %lf %lf",3,
-                  &O->VelN[0],&O->VelN[1],&O->VelN[2]);
+            for(j=0;j<7;j++) fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+               &O->PosN[0],&O->PosN[1],&O->PosN[2],
+               junk,&newline);
+            fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+                  &O->VelN[0],&O->VelN[1],&O->VelN[2],
+                  junk,&newline);
             for(j=0;j<3;j++){
                O->PosN[j] *= 1.0E3;
                O->VelN[j] *= 1.0E3;
@@ -659,15 +648,16 @@ void InitOrbit(struct OrbitType *O)
                OscEphToMeanEph(mu,J2,rad,DynTime0,O);
             }
             /* Skip FILE section */
-            for(j=0;j<3;j++) ScanLine(infile,"",0,NULL);
+            for(j=0;j<3;j++) fscanf(infile,"%[^\n] %[\n]",junk,&newline);
          }
          else if (InputType == INP_FILE) {
             /* Skip KEP and RV sections */
-            for(j=0;j<9;j++) ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%120s",1,response);
+            for(j=0;j<9;j++) fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%s %[^\n] %[\n]",
+               response,junk,&newline);
             ElementType = DecodeString(response);
-            ScanLine(infile,"\"%40[^\"]\"",1,ElementFileName);
-            ScanLine(infile,"\"%40[^\"]\"",1,ElementLabel);
+            fscanf(infile,"\"%[^\"]\" %[^\n] %[\n]",ElementFileName,junk,&newline);
+            fscanf(infile,"\"%[^\"]\" %[^\n] %[\n]",ElementLabel,junk,&newline);
             if (ElementType == INP_TLE) {
                if (O->World != EARTH) {
                   printf("TLEs are only defined for Earth-orbiting S/C.\n");
@@ -703,48 +693,12 @@ void InitOrbit(struct OrbitType *O)
             else if (ElementType == INP_SPLINE) {
                O->SplineFile = FileOpen(InOutPath,ElementFileName,"rt");
                O->SplineActive = TRUE;
-               i = 0;
-               NumMonDay = 0;
-               NumDOY = 0;
-               while (NumMonDay != 15 && NumDOY != 13) { /* Discard any header lines */
-                  fgets(SplineLine,255,O->SplineFile);
-                  NumMonDay = sscanf(SplineLine,MonDayFmt,
-                     &NodeYear,&sep,&NodeMonth,&sep,&NodeDay,&sep,
-                     &NodeHour,&NodeMin,&NodeSec,
+               for(i=0;i<4;i++) {
+                  fscanf(O->SplineFile," %ld:%ld:%ld:%ld:%ld:%lf %lf %lf %lf %lf %lf %lf %[\n]",
+                     &NodeYear,&NodeMonth,&NodeDay,&NodeHour,&NodeMin,&NodeSec,
                      &O->NodePos[i][0],&O->NodePos[i][1],&O->NodePos[i][2],
-                     &O->NodeVel[i][0],&O->NodeVel[i][1],&O->NodeVel[i][2]);
-                  NumDOY = sscanf(SplineLine,DOYFmt,
-                     &NodeYear,&sep,&NodeDOY,&sep,
-                     &NodeHour,&NodeMin,&NodeSec,
-                     &O->NodePos[i][0],&O->NodePos[i][1],&O->NodePos[i][2],
-                     &O->NodeVel[i][0],&O->NodeVel[i][1],&O->NodeVel[i][2]);
-               }
-               if (NumMonDay == 15) {
-                  O->SplineDateFormat = DATE_MON_DAY;
-                  strcpy(O->SplineFmt,MonDayFmt);
-               }
-               else {
-                  O->SplineDateFormat = DATE_DOY;
-                  strcpy(O->SplineFmt,DOYFmt);
-                  DOY2MD(NodeYear,NodeDOY,&NodeMonth,&NodeDay);                  
-               }
-               for(i=1;i<4;i++) {
-                  fgets(SplineLine,255,O->SplineFile);
-                  if (O->SplineDateFormat == DATE_MON_DAY) {
-                     sscanf(SplineLine,O->SplineFmt,
-                        &NodeYear,&sep,&NodeMonth,&sep,&NodeDay,&sep,
-                        &NodeHour,&NodeMin,&NodeSec,
-                        &O->NodePos[i][0],&O->NodePos[i][1],&O->NodePos[i][2],
-                        &O->NodeVel[i][0],&O->NodeVel[i][1],&O->NodeVel[i][2]);
-                  }
-                  else {
-                     sscanf(SplineLine,O->SplineFmt,
-                        &NodeYear,&sep,&NodeDOY,&sep,
-                        &NodeHour,&NodeMin,&NodeSec,
-                        &O->NodePos[i][0],&O->NodePos[i][1],&O->NodePos[i][2],
-                        &O->NodeVel[i][0],&O->NodeVel[i][1],&O->NodeVel[i][2]);
-                     DOY2MD(NodeYear,NodeDOY,&NodeMonth,&NodeDay);                  
-                  }
+                     &O->NodeVel[i][0],&O->NodeVel[i][1],&O->NodeVel[i][2],
+                     &newline);
                   O->NodeDynTime[i] = DateToTime(NodeYear,NodeMonth,NodeDay,
                      NodeHour,NodeMin,NodeSec);
                   O->NodeDynTime[i] += DynTime-CivilTime; /* Adjust from UTC to TT */
@@ -771,15 +725,15 @@ void InitOrbit(struct OrbitType *O)
          FindCLN(O->PosN,O->VelN,O->CLN,O->wln);
 
          /* Skip THREE_BODY section */
-         for(j=0;j<17;j++) ScanLine(infile,"",0,NULL);
+         for(j=0;j<17;j++) fscanf(infile,"%[^\n] %[\n]",junk,&newline);
 
       }
       else if (O->Regime == ORB_THREE_BODY) {
          /* Skip ZERO, FLIGHT, and CENTRAL sections */
-         for(j=0;j<22;j++) ScanLine(infile,"",0,NULL);
+         for(j=0;j<22;j++) fscanf(infile,"%[^\n] %[\n]",junk,&newline);
 
-         ScanLine(infile,"",0,NULL);
-         ScanLine(infile,"%120s",1,response);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+         fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
          O->Sys = DecodeString(response);
          if (!LagSys[O->Sys].Exists) {
             printf("Oops.  Orbit %ld depends on a Lagrange System that doesn't exist.\n",O->Tag);
@@ -789,25 +743,31 @@ void InitOrbit(struct OrbitType *O)
          O->Body2 = LagSys[O->Sys].Body2;
          O->mu1 =  LagSys[O->Sys].mu1;
          O->mu2 =  LagSys[O->Sys].mu2;
-         ScanLine(infile,"%120s",1,response);
+         fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
          O->LagDOF = DecodeString(response);
-         ScanLine(infile,"%120s",1,response);
+         fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
          InputType = DecodeString(response);
          if (InputType == INP_MODES) { /* Initial modes given */
-            ScanLine(infile,"%120s",1,response);
+            fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
             O->LP = DecodeString(response);
-            ScanLine(infile,"%lf",1,&AmpXY1);
-            ScanLine(infile,"%lf",1,&PhiXY1);
-            ScanLine(infile,"%120s",1,response);
+            fscanf(infile,"%lf %[^\n] %[\n]",
+                    &AmpXY1,junk,&newline);
+            fscanf(infile,"%lf %[^\n] %[\n]",
+                    &PhiXY1,junk,&newline);
+            fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
             if (DecodeString(response) == DIR_CCW) SenseXY1 = 1.0;
             else SenseXY1 = -1.0;
-            ScanLine(infile,"%lf",1,&AmpXY2);
-            ScanLine(infile,"%lf",1,&PhiXY2);
-            ScanLine(infile,"%120s",1,response);
+            fscanf(infile,"%lf %[^\n] %[\n]",
+                    &AmpXY2,junk,&newline);
+            fscanf(infile,"%lf %[^\n] %[\n]",
+                    &PhiXY2,junk,&newline);
+            fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
             if (DecodeString(response) == DIR_CCW) SenseXY2 = 1.0;
             else SenseXY2 = -1.0;
-            ScanLine(infile,"%lf",1,&AmpZ);
-            ScanLine(infile,"%lf",1,&PhiZ);
+            fscanf(infile,"%lf %[^\n] %[\n]",
+                    &AmpZ,junk,&newline);
+            fscanf(infile,"%lf %[^\n] %[\n]",
+                    &PhiZ,junk,&newline);
             AmpXY1  *= 1000.0;
             AmpXY2  *= 1000.0;
             AmpZ    *= 1000.0;
@@ -820,26 +780,29 @@ void InitOrbit(struct OrbitType *O)
             /* Find r,v from modal description */
             LagModes2RV(DynTime,&LagSys[O->Sys],O,O->PosN,O->VelN);
             /* Skip XYZ and FILE sections */
-            for(j=0;j<4;j++) ScanLine(infile,"",0,NULL);
+            for(j=0;j<4;j++) fscanf(infile,"%[^\n] %[\n]",junk,&newline);
          }
          else if (InputType == INP_XYZ) {
             /* Skip MODES section */
-            for(j=0;j<9;j++) ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%lf %lf %lf",3,&O->x,&O->y,&O->z);
-            ScanLine(infile,"%lf %lf %lf",3,&O->xdot,&O->ydot,&O->zdot);
+            for(j=0;j<9;j++) fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+                    &O->x,&O->y,&O->z,junk,&newline);
+            fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+                    &O->xdot,&O->ydot,&O->zdot,junk,&newline);
             XYZ2LagModes(0.0,&LagSys[O->Sys],O);
             LagModes2RV(DynTime,&LagSys[O->Sys],O,O->PosN,O->VelN);
             /* Skip FILE section */
-            for(j=0;j<2;j++) ScanLine(infile,"",0,NULL);
+            for(j=0;j<2;j++) fscanf(infile,"%[^\n] %[\n]",junk,&newline);
          }
          else if (InputType == INP_FILE) {
-            ScanLine(infile,"%120s",1,response);
+            fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
             O->LP = DecodeString(response);
             /* Skip MODES and XYZ sections */
-            for(j=0;j<10;j++) ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%120s \"%40[^\"]\"",2,response,ElementLabel);
+            for(j=0;j<10;j++) fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%s \"%[^\"]\" %[^\n] %[\n]",
+               response,ElementLabel,junk,&newline);
             ElementType = DecodeString(response);
-            ScanLine(infile,"\"%40[^\"]\"",1,ElementFileName);
+            fscanf(infile,"\"%[^\"]\" %[^\n] %[\n]",ElementFileName,junk,&newline);
             if (ElementType == INP_TRV) {
                Success = LoadTRVfromFile(InOutPath, ElementFileName,
                   ElementLabel, CivilTime, O);
@@ -851,49 +814,12 @@ void InitOrbit(struct OrbitType *O)
             }
             else if (ElementType == INP_SPLINE) {
                O->SplineFile = FileOpen(InOutPath,ElementFileName,"rt");
-               O->SplineActive = TRUE;
-               i = 0;
-               NumMonDay = 0;
-               NumDOY = 0;
-               while (NumMonDay != 15 && NumDOY != 13) { /* Discard any header lines */
-                  fgets(SplineLine,255,O->SplineFile);
-                  NumMonDay = sscanf(SplineLine,MonDayFmt,
-                     &NodeYear,&sep,&NodeMonth,&sep,&NodeDay,&sep,
-                     &NodeHour,&NodeMin,&NodeSec,
+               for(i=0;i<4;i++) {
+                  fscanf(O->SplineFile," %ld:%ld:%ld:%ld:%ld:%lf %lf %lf %lf %lf %lf %lf %[\n]",
+                     &NodeYear,&NodeMonth,&NodeDay,&NodeHour,&NodeMin,&NodeSec,
                      &O->NodePos[i][0],&O->NodePos[i][1],&O->NodePos[i][2],
-                     &O->NodeVel[i][0],&O->NodeVel[i][1],&O->NodeVel[i][2]);
-                  NumDOY = sscanf(SplineLine,DOYFmt,
-                     &NodeYear,&sep,&NodeDOY,&sep,
-                     &NodeHour,&NodeMin,&NodeSec,
-                     &O->NodePos[i][0],&O->NodePos[i][1],&O->NodePos[i][2],
-                     &O->NodeVel[i][0],&O->NodeVel[i][1],&O->NodeVel[i][2]);
-               }
-               if (NumMonDay == 15) {
-                  O->SplineDateFormat = DATE_MON_DAY;
-                  strcpy(O->SplineFmt,MonDayFmt);
-               }
-               else {
-                  O->SplineDateFormat = DATE_DOY;
-                  strcpy(O->SplineFmt,DOYFmt);
-                  DOY2MD(NodeYear,NodeDOY,&NodeMonth,&NodeDay);                  
-               }
-               for(i=1;i<4;i++) {
-                  fgets(SplineLine,255,O->SplineFile);
-                  if (O->SplineDateFormat == DATE_MON_DAY) {
-                     sscanf(SplineLine,O->SplineFmt,
-                        &NodeYear,&sep,&NodeMonth,&sep,&NodeDay,&sep,
-                        &NodeHour,&NodeMin,&NodeSec,
-                        &O->NodePos[i][0],&O->NodePos[i][1],&O->NodePos[i][2],
-                        &O->NodeVel[i][0],&O->NodeVel[i][1],&O->NodeVel[i][2]);
-                  }
-                  else {
-                     sscanf(SplineLine,O->SplineFmt,
-                        &NodeYear,&sep,&NodeDOY,&sep,
-                        &NodeHour,&NodeMin,&NodeSec,
-                        &O->NodePos[i][0],&O->NodePos[i][1],&O->NodePos[i][2],
-                        &O->NodeVel[i][0],&O->NodeVel[i][1],&O->NodeVel[i][2]);
-                     DOY2MD(NodeYear,NodeDOY,&NodeMonth,&NodeDay);                  
-                  }
+                     &O->NodeVel[i][0],&O->NodeVel[i][1],&O->NodeVel[i][2],
+                     &newline);
                   O->NodeDynTime[i] = DateToTime(NodeYear,NodeMonth,NodeDay,
                      NodeHour,NodeMin,NodeSec);
                   for(j=0;j<3;j++) {
@@ -930,10 +856,11 @@ void InitOrbit(struct OrbitType *O)
 
 /* .. Formation Frame Parameters */
       F = &Frm[O->Tag];
-      ScanLine(infile,"",0,NULL);
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
       F->FixedInFrame = response[0];
-      ScanLine(infile,"%lf %lf %lf %ld",4,&Ang1,&Ang2,&Ang3,&Seq);
+      fscanf(infile,"%lf %lf %lf %ld %[^\n] %[\n]",
+             &Ang1,&Ang2,&Ang3,&Seq,junk,&newline);
       A2C(Seq,Ang1*D2R,Ang2*D2R,Ang3*D2R,F->CN);
       if(F->FixedInFrame == 'L') {
          /* Adjust CFN */
@@ -942,9 +869,10 @@ void InitOrbit(struct OrbitType *O)
          }
          MxM(F->CL,O->CLN,F->CN);
       }
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
       FrmExpressedIn = response[0];
-      ScanLine(infile,"%lf %lf %lf",3,&F->PosR[0],&F->PosR[1],&F->PosR[2]);
+      fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+             &F->PosR[0],&F->PosR[1],&F->PosR[2],junk,&newline);
       if (FrmExpressedIn == 'L') {
          for(j=0;j<3;j++) p[j] = F->PosR[j];
          MTxV(O->CLN,p,F->PosR);
@@ -1122,7 +1050,7 @@ void InitRigidDyn(struct SCType *S)
       MapJointStatesToStateVector(S);
 
 /* .. Echo tree tables */
-      if (Nsc == 1) strcpy(Fmt,"\0");
+      if (Nsc == 1) sprintf(Fmt,"");
       else if (Nsc <= 10) sprintf(Fmt,"%1ld",S->ID);
       else sprintf(Fmt,"%02ld",S->ID);
       sprintf(filename,"Tree%s.42",Fmt);
@@ -1229,6 +1157,7 @@ void InitFlexModes(struct SCType *S)
       long Nnonzero,Iz;
       long i,j;
       double value,wf;
+      char junk[80],newline;
       double ***L,****N;
       struct NodeType *FN;
 
@@ -1241,10 +1170,10 @@ void InitFlexModes(struct SCType *S)
          B->Nf = 0;
          if (strcmp(B->FlexFileName,"NONE")) {
             infile = FileOpen(InOutPath,B->FlexFileName,"r");
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"",0,NULL);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
             /* Number of Flex Modes */
-            ScanLine(infile,"%ld",1,&B->Nf);
+            fscanf(infile,"%ld %[^\n] %[\n]",&B->Nf,junk,&newline);
             B->f0 = D->Nf;
             D->Nf += B->Nf;
             /* Allocate matrices */
@@ -1306,14 +1235,15 @@ void InitFlexModes(struct SCType *S)
          B = &S->B[Ib];
          if (strcmp(B->FlexFileName,"NONE")) {
             infile = FileOpen(InOutPath,B->FlexFileName,"r");
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"",0,NULL);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
 
             /* Initial Modal States x, u */
-            ScanLine(infile,"",0,NULL);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
             for(If=0;If<B->Nf;If++) {
-               ScanLine(infile,"%lf %lf",2,&B->eta[If],&B->xi[If]);
+               fscanf(infile,"%lf %lf %[^\n] %[\n]",
+                  &B->eta[If],&B->xi[If],junk,&newline);
                D->xf[B->f0+If] = B->eta[If];
                D->uf[B->f0+If] = B->xi[If];
             }
@@ -1331,12 +1261,13 @@ void InitFlexModes(struct SCType *S)
             }
 
             /**** Joint Node Mode Shapes ****/
-            ScanLine(infile,"",0,NULL);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
             /* Non-zero Translation Mode Shape (PSI) Elements */
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%ld",1,&Nnonzero);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%ld %[^\n] %[\n]",&Nnonzero,junk,&newline);
             for(Iz=0;Iz<Nnonzero;Iz++) {
-               ScanLine(infile,"%ld %ld %ld %lf",4,&Im,&Ig,&Ia,&value);
+               fscanf(infile,"%ld %ld %ld %lf %[^\n] %[\n]",
+                  &Im,&Ig,&Ia,&value,junk,&newline);
                if (Ig >= S->Ng) {
                   printf("Error in InitFlexModes: Joint %ld out of range\n",Ig);
                   exit(1);
@@ -1358,10 +1289,11 @@ void InitFlexModes(struct SCType *S)
                }
             }
             /* Non-zero Rotation Mode Shape (THETA) Elements */
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%ld",1,&Nnonzero);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%ld %[^\n] %[\n]",&Nnonzero,junk,&newline);
             for(Iz=0;Iz<Nnonzero;Iz++) {
-               ScanLine(infile,"%ld %ld %ld %lf",4,&Im,&Ig,&Ia,&value);
+               fscanf(infile,"%ld %ld %ld %lf %[^\n] %[\n]",
+                  &Im,&Ig,&Ia,&value,junk,&newline);
                if (Ig >= S->Ng) {
                   printf("Error in InitFlexModes: Joint %ld out of range\n",Ig);
                   exit(1);
@@ -1384,12 +1316,13 @@ void InitFlexModes(struct SCType *S)
             }
 
             /**** Analysis Node Mode Shapes ****/
-            ScanLine(infile,"",0,NULL);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
             /* Non-zero Translation Mode Shape (PSI) Elements */
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%ld",1,&Nnonzero);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%ld %[^\n] %[\n]",&Nnonzero,junk,&newline);
             for(Iz=0;Iz<Nnonzero;Iz++) {
-               ScanLine(infile,"%ld %ld %ld %lf",4,&Im,&In,&Ia,&value);
+               fscanf(infile,"%ld %ld %ld %lf %[^\n] %[\n]",
+                  &Im,&In,&Ia,&value,junk,&newline);
                if (In > B->NumNodes-1) {
                   printf("Error in InitFlexModes (PSI):  Node %ld out of range\n",In);
                   exit(1);
@@ -1407,10 +1340,11 @@ void InitFlexModes(struct SCType *S)
             }
 
             /* Non-zero Rotation Mode Shape (THETA) Elements */
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%ld",1,&Nnonzero);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%ld %[^\n] %[\n]",&Nnonzero,junk,&newline);
             for(Iz=0;Iz<Nnonzero;Iz++) {
-               ScanLine(infile,"%ld %ld %ld %lf",4,&Im,&In,&Ia,&value);
+               fscanf(infile,"%ld %ld %ld %lf %[^\n] %[\n]",
+                  &Im,&In,&Ia,&value,junk,&newline);
                FN = &B->Node[In];
                if (In > B->NumNodes-1) {
                   printf("Error in InitFlexModes (THETA):  Node %ld out of range\n",In);
@@ -1428,10 +1362,11 @@ void InitFlexModes(struct SCType *S)
             }
 
             /* Non-zero Mass Matrix Elements */
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%ld",1,&Nnonzero);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%ld %[^\n] %[\n]",&Nnonzero,junk,&newline);
             for(Iz=0;Iz<Nnonzero;Iz++) {
-               ScanLine(infile,"%ld %ld %lf",3,&i,&j,&value);
+               fscanf(infile,"%ld %ld %lf %[^\n] %[\n]",
+                  &i,&j,&value,junk,&newline);
                if (i >= B->Nf || j >= B->Nf) {
                   printf("Error in InitFlexModes: Mass Matrix index [%ld][%ld] out of range\n",i,j);
                   exit(1);
@@ -1439,10 +1374,11 @@ void InitFlexModes(struct SCType *S)
                B->Mf[i][j] = value;
             }
             /* Non-zero Stiffness Matrix Elements */
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%ld",1,&Nnonzero);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%ld %[^\n] %[\n]",&Nnonzero,junk,&newline);
             for(Iz=0;Iz<Nnonzero;Iz++) {
-               ScanLine(infile,"%ld %ld %lf",3,&i,&j,&value);
+               fscanf(infile,"%ld %ld %lf %[^\n] %[\n]",
+                  &i,&j,&value,junk,&newline);
                if (i >= B->Nf || j >= B->Nf) {
                   printf("Error in InitFlexModes: Stiffness Matrix index [%ld][%ld] out of range\n",i,j);
                   exit(1);
@@ -1450,10 +1386,11 @@ void InitFlexModes(struct SCType *S)
                B->Kf[i][j] = value;
             }
             /* Non-zero Damping Matrix Elements */
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%ld",1,&Nnonzero);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%ld %[^\n] %[\n]",&Nnonzero,junk,&newline);
             for(Iz=0;Iz<Nnonzero;Iz++) {
-               ScanLine(infile,"%ld %ld %lf",3,&i,&j,&value);
+               fscanf(infile,"%ld %ld %lf %[^\n] %[\n]",
+                  &i,&j,&value,junk,&newline);
                if (i >= B->Nf || j >= B->Nf) {
                   printf("Error in InitFlexModes: Damping Matrix index [%ld][%ld] out of range\n",i,j);
                   exit(1);
@@ -1472,16 +1409,16 @@ void InitFlexModes(struct SCType *S)
             }
 
             /* Linear Momentum Modal Integral, Pf, 3 x Nf */
-            ScanLine(infile,"",0,NULL);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
             for(Im=0;Im<B->Nf;Im++) {
-               ScanLine(infile,"%lf %lf %lf",3,
-                  &B->Pf[0][Im],&B->Pf[1][Im],&B->Pf[2][Im]);
+               fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+                  &B->Pf[0][Im],&B->Pf[1][Im],&B->Pf[2][Im],junk,&newline);
             }
             /* Angular Momentum Modal Integral, Hf, 3 x Nf */
-            ScanLine(infile,"",0,NULL);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
             for(Im=0;Im<B->Nf;Im++) {
-               ScanLine(infile,"%lf %lf %lf",3,
-                  &B->Hf[0][Im],&B->Hf[1][Im],&B->Hf[2][Im]);
+               fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+                  &B->Hf[0][Im],&B->Hf[1][Im],&B->Hf[2][Im],junk,&newline);
             }
             /* Don't trust input file to make Hf, and Pf be zero */
             if (S->RefPt == REFPT_CM) {
@@ -1497,15 +1434,12 @@ void InitFlexModes(struct SCType *S)
 
             /* Non-zero Elements of Linear Modal Integral, L, 3 x 3 x Nf */
             L = (double ***) calloc(3,sizeof(double **));
-            if (L==NULL) {
-               printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
-               exit(1);
-            }
             for(i=0;i<3;i++) L[i] = CreateMatrix(3,B->Nf);
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%ld",1,&Nnonzero);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%ld %[^\n] %[\n]",&Nnonzero,junk,&newline);
             for(Iz=0;Iz<Nnonzero;Iz++) {
-               ScanLine(infile,"%ld %ld %ld %lf",4,&i,&j,&Im,&value);
+               fscanf(infile,"%ld %ld %ld %lf %[^\n] %[\n]",
+                  &i,&j,&Im,&value,junk,&newline);
                if (i >= 3 || j >= 3 || Im >= B->Nf) {
                   printf("Error in InitFlexModes: L index [%ld][%ld][%ld] out of range\n",i,j,Im);
                   exit(1);
@@ -1529,20 +1463,17 @@ void InitFlexModes(struct SCType *S)
 
             /* Non-zero Elements of Angular Modal Integral, N, 3 x 3 x Nf x Nf*/
             N = (double ****) calloc(3,sizeof(double ***));
-            if (N==NULL) {
-               printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
-               exit(1);
-            }
             for(i=0;i<3;i++) {
                N[i] = (double ***) calloc(3,sizeof(double **));
                for(j=0;j<3;j++) {
                   N[i][j] = CreateMatrix(B->Nf,B->Nf);
                }
             }
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%ld",1,&Nnonzero);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%ld %[^\n] %[\n]",&Nnonzero,junk,&newline);
             for(Iz=0;Iz<Nnonzero;Iz++) {
-               ScanLine(infile,"%ld %ld %ld %ld %lf",5,&i,&j,&Im,&Jm,&value);
+               fscanf(infile,"%ld %ld %ld %ld %lf %[^\n] %[\n]",
+                  &i,&j,&Im,&Jm,&value,junk,&newline);
                if (i >= 3 || j >= 3 || Im >= B->Nf || Jm >= B->Nf) {
                   printf("Error in InitFlexModes: N index [%ld][%ld][%ld][%ld] out of range\n",i,j,Im,Jm);
                   exit(1);
@@ -1613,19 +1544,20 @@ void InitNodes(struct BodyType *B)
 {
       struct NodeType *N;
       FILE *infile;
+      char junk[80],newline;
       long In,i;
       
       if (strcmp(B->NodeFileName,"NONE")) {
          infile = FileOpen(InOutPath,B->NodeFileName,"r");
-         ScanLine(infile,"",0,NULL);
-         ScanLine(infile,"",0,NULL);
-         ScanLine(infile,"%ld",1,&B->NumNodes);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+         fscanf(infile,"%ld %[^\n] %[\n]",&B->NumNodes,junk,&newline);
          B->Node = (struct NodeType *) calloc(B->NumNodes,sizeof(struct NodeType));
-         ScanLine(infile,"",0,NULL);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
          for(In=0;In<B->NumNodes;In++) {
             N = &B->Node[In];
-            ScanLine(infile,"%lf %lf %lf \"%80[^\"]\"",4,
-               &N->NomPosB[0],&N->NomPosB[1],&N->NomPosB[2],N->comment);
+            fscanf(infile,"%lf %lf %lf \"%[^\"]\" %[\n]",
+               &N->NomPosB[0],&N->NomPosB[1],&N->NomPosB[2],N->comment,&newline);
          }
          fclose(infile);
       }
@@ -1641,6 +1573,7 @@ void InitNodes(struct BodyType *B)
 void InitPassiveJoint(struct JointType *G, struct SCType *S)
 {
       FILE *infile;
+      char junk[80],newline;
       long i;
       
       for(i=0;i<3;i++) {
@@ -1651,25 +1584,29 @@ void InitPassiveJoint(struct JointType *G, struct SCType *S)
       }
       if (strcmp(G->ParmFileName,"NONE")) {
          infile = FileOpen(InOutPath,G->ParmFileName,"r");
-         ScanLine(infile,"",0,NULL);
-         ScanLine(infile,"",0,NULL);
-         ScanLine(infile,"",0,NULL);
-         ScanLine(infile,"%lf %lf %lf",3,
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+         fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
                 &G->RotSpringCoef[0],
                 &G->RotSpringCoef[1],
-                &G->RotSpringCoef[2]);
-         ScanLine(infile,"%lf %lf %lf",3,
+                &G->RotSpringCoef[2],
+                junk,&newline);
+         fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
                 &G->RotDampCoef[0],
                 &G->RotDampCoef[1],
-                &G->RotDampCoef[2]);
-         ScanLine(infile,"%lf %lf %lf",3,
+                &G->RotDampCoef[2],
+                junk,&newline);
+         fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
                 &G->TrnSpringCoef[0],
                 &G->TrnSpringCoef[1],
-                &G->TrnSpringCoef[2]);
-         ScanLine(infile,"%lf %lf %lf",3,
+                &G->TrnSpringCoef[2],
+                junk,&newline);
+         fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
                 &G->TrnDampCoef[0],
                 &G->TrnDampCoef[1],
-                &G->TrnDampCoef[2]);
+                &G->TrnDampCoef[2],
+                junk,&newline);
          fclose(infile);
       }
 }
@@ -1679,9 +1616,9 @@ void InitActuatedJoint(struct JointType *G, struct SCType *S)
       long i;
       
       for(i=0;i<3;i++) {
-         G->MaxTrq[i] = 500.0;
-         G->MaxAngRate[i] = 60.0*D2R;
-         G->AngRateGain[i] = 120.0; //G->MaxTrq[i]/G->MaxAngRate[i];
+         G->MaxTrq[i] = 10.0;
+         G->MaxAngRate[i] = 1.0*D2R;
+         G->AngRateGain[i] = G->MaxTrq[i]/G->MaxAngRate[i];
          G->MaxFrc[i] = 10.0;
          G->MaxPosRate[i] = 0.01;
          G->PosRateGain[i] = G->MaxFrc[i]/G->MaxPosRate[i];
@@ -1693,58 +1630,58 @@ void InitShakers(struct SCType *S)
       FILE *infile;
       long Ish,It;
       struct ShakerType *Sh;
-      char response[121];
+      char response[80],junk[80],newline;
       
       if (strcmp(S->ShakerFileName,"NONE")) {
       
          infile = FileOpen(InOutPath,S->ShakerFileName,"r");
 
-         ScanLine(infile,"",0,NULL);
-         ScanLine(infile,"%ld",1,&S->Nsh);
-         ScanLine(infile,"",0,NULL);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+         fscanf(infile,"%ld %[^\n] %[\n]",&S->Nsh,junk,&newline);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);  
          
          S->Shaker = (struct ShakerType *) calloc(S->Nsh,sizeof(struct ShakerType)); 
          for(Ish=0;Ish<S->Nsh;Ish++) {
             Sh = &S->Shaker[Ish];
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%ld %ld",2,&Sh->Body,&Sh->Node);
-            ScanLine(infile,"%120s",1,response); 
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%ld %ld %[^\n] %[\n]",&Sh->Body,&Sh->Node,junk,&newline);
+            fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline); 
             Sh->FrcTrq = DecodeString(response);
-            ScanLine(infile,"%lf %lf %lf",3,
-               &Sh->Axis[0],&Sh->Axis[1],&Sh->Axis[2]);
+            fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+               &Sh->Axis[0],&Sh->Axis[1],&Sh->Axis[2],junk,&newline);
             UNITV(Sh->Axis);   
-            ScanLine(infile,"%ld",1,&Sh->Ntone);
+            fscanf(infile,"%ld %[^\n] %[\n]",&Sh->Ntone,junk,&newline);
             if (Sh->Ntone==0) {
-               ScanLine(infile,"",0,NULL);
-               ScanLine(infile,"",0,NULL);
-               ScanLine(infile,"",0,NULL);
+               fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+               fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+               fscanf(infile,"%[^\n] %[\n]",junk,&newline);
             }
             else {
                Sh->ToneAmp = (double *) calloc(Sh->Ntone,sizeof(double));
                Sh->ToneFreq = (double *) calloc(Sh->Ntone,sizeof(double));
                Sh->TonePhase = (double *) calloc(Sh->Ntone,sizeof(double));
                for(It=0;It<Sh->Ntone;It++) {
-                  ScanLine(infile,"%lf",1,&Sh->ToneAmp[It]);
-                  ScanLine(infile,"%lf",1,&Sh->ToneFreq[It]);
-                  ScanLine(infile,"%lf",1,&Sh->TonePhase[It]);
+                  fscanf(infile,"%lf %[^\n] %[\n]",&Sh->ToneAmp[It],junk,&newline);
+                  fscanf(infile,"%lf %[^\n] %[\n]",&Sh->ToneFreq[It],junk,&newline);
+                  fscanf(infile,"%lf %[^\n] %[\n]",&Sh->TonePhase[It],junk,&newline);
                   Sh->ToneFreq[It] *= TwoPi;
                   Sh->TonePhase[It] *= D2R;
                }
             }
-            ScanLine(infile,"%120s",1,response); 
+            fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline); 
             Sh->RandomActive = DecodeString(response);
             if (!Sh->RandomActive) {
-               ScanLine(infile,"",0,NULL);
-               ScanLine(infile,"",0,NULL);
+               fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+               fscanf(infile,"%[^\n] %[\n]",junk,&newline);
                Sh->RandomProc = NULL;
                Sh->Lowpass = NULL;
                Sh->Highpass = NULL;
             }
             else {
-               ScanLine(infile,"%lf %lf",2,
-                  &Sh->LowBandLimit,&Sh->HighBandLimit);
-               ScanLine(infile,"%lf",1,&Sh->RandStd);
+               fscanf(infile,"%lf %lf %[^\n] %[\n]",
+                  &Sh->LowBandLimit,&Sh->HighBandLimit,junk,&newline);
+               fscanf(infile,"%lf %[^\n] %[\n]",&Sh->RandStd,junk,&newline);
                Sh->RandStd /= Sh->HighBandLimit-Sh->LowBandLimit;
                Sh->HighBandLimit *= TwoPi;
                Sh->LowBandLimit *= TwoPi;
@@ -1766,58 +1703,59 @@ void InitWhlDragAndJitter(struct WhlType *W)
 {
       FILE *infile;
       struct WhlHarmType *H;
+      char junk[80],newline;
       double Stiction,LugrePeriod,w;
       long Ih;
       
       if (strcmp(W->DragJitterFileName,"NONE")) {
          infile = FileOpen(InOutPath,W->DragJitterFileName,"r");
-         ScanLine(infile,"",0,NULL);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
          /* Drag Parameters */
-         ScanLine(infile,"",0,NULL);
-         ScanLine(infile,"",0,NULL);
-         ScanLine(infile,"",0,NULL);
-         ScanLine(infile,"%lf",1,&W->CoulCoef);
-         ScanLine(infile,"%lf",1,&Stiction);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+         fscanf(infile,"%lf  %[^\n] %[\n]",&W->CoulCoef,junk,&newline);
+         fscanf(infile,"%lf  %[^\n] %[\n]",&Stiction,junk,&newline);
          W->StribeckCoef = Stiction - W->CoulCoef;
          if (W->StribeckCoef < 0.0) {
             printf("Error: Stiction < Coulomb friction in %s.  Better fix that.\n",
                W->DragJitterFileName);
             exit(1);
          }
-         ScanLine(infile,"%lf",1,&W->ViscCoef);
-         ScanLine(infile,"%lf",1,&W->StribeckZone);
-         ScanLine(infile,"%lf",1,&LugrePeriod);
+         fscanf(infile,"%lf  %[^\n] %[\n]",&W->ViscCoef,junk,&newline);
+         fscanf(infile,"%lf  %[^\n] %[\n]",&W->StribeckZone,junk,&newline);
+         fscanf(infile,"%lf  %[^\n] %[\n]",&LugrePeriod,junk,&newline);
          w = TwoPi/LugrePeriod;
          W->LugreSpringCoef = W->J*w*w;
          W->LugreDampCoef = 2.0*W->J*w; /* Critical damping assumed */
-         ScanLine(infile,"%lf",1,&W->LugreDampZone);
+         fscanf(infile,"%lf  %[^\n] %[\n]",&W->LugreDampZone,junk,&newline);
          W->z = 0.0;
          
          /* Jitter Parameters */
-         ScanLine(infile,"",0,NULL);
-         ScanLine(infile,"",0,NULL);
-         ScanLine(infile,"",0,NULL);
-         ScanLine(infile,"%lf",1,&W->gamma);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+         fscanf(infile,"%lf  %[^\n] %[\n]",&W->gamma,junk,&newline);
          W->Jt = 0.5*W->gamma*W->J;
-         ScanLine(infile,"%lf",1,&W->ImbPhase);
+         fscanf(infile,"%lf  %[^\n] %[\n]",&W->ImbPhase,junk,&newline);
          W->ImbPhase *= D2R;
-         ScanLine(infile,"%lf %lf",2,&W->LatFreq,&W->LatDamp);
+         fscanf(infile,"%lf %lf %[^\n] %[\n]",&W->LatFreq,&W->LatDamp,junk,&newline);
          W->LatFreq *= TwoPi;
-         ScanLine(infile,"%lf %lf",2,&W->RockFreq,&W->RockDamp);
+         fscanf(infile,"%lf %lf %[^\n] %[\n]",&W->RockFreq,&W->RockDamp,junk,&newline);
          W->RockFreq *= TwoPi;
-         ScanLine(infile,"",0,NULL);
-         ScanLine(infile,"%ld",1,&W->NumHarm);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+         fscanf(infile,"%ld %[^\n] %[\n]",&W->NumHarm,junk,&newline);
          if (W->NumHarm > 0) {
             W->Harm = (struct WhlHarmType *) calloc(W->NumHarm,sizeof(struct WhlHarmType));
             for(Ih=0;Ih<W->NumHarm;Ih++) {
                H = &W->Harm[Ih];
-               ScanLine(infile,"",0,NULL);
-               ScanLine(infile,"%lf",1,&H->n);
-               ScanLine(infile,"%lf",1,&H->Ks);
+               fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+               fscanf(infile,"%lf  %[^\n] %[\n]",&H->n,junk,&newline);
+               fscanf(infile,"%lf  %[^\n] %[\n]",&H->Ks,junk,&newline);
                H->Ks *= 1.0E-3*0.01;
-               ScanLine(infile,"%lf",1,&H->Kd);
+               fscanf(infile,"%lf  %[^\n] %[\n]",&H->Kd,junk,&newline);
                H->Kd *= 1.0E-3*1.0E-4;
-               ScanLine(infile,"%lf",1,&H->phase);
+               fscanf(infile,"%lf  %[^\n] %[\n]",&H->phase,junk,&newline);
                H->phase *= D2R;
             }
          }
@@ -1827,40 +1765,40 @@ void InitWhlDragAndJitter(struct WhlType *W)
 /**********************************************************************/
 void InitOptics(struct FgsType *F)
 {
-#if 0
       FILE *infile;
       struct SCType *S;
       struct BodyType *B;
       struct NodeType *N;
       struct OpticsType *O;
       struct OpticsType *Ap,*Det;
-      char response[120];
+      char junk[256],newline,response[120];
       double ApPntN[3],FocPntN[3],DetPntN[3],RelPosN[3];
       long Io,i;
       long HasFocus;
 
       if (strcmp(F->OpticsFileName,"NONE")) {
          infile = FileOpen(InOutPath,F->OpticsFileName,"r");
-         ScanLine(infile,"",0,NULL);
-         ScanLine(infile,"",0,NULL);
-         ScanLine(infile,"",0,NULL);
-         ScanLine(infile,"%ld",1,&F->Nopt);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+         fscanf(infile,"%ld  %[^\n] %[\n]",&F->Nopt,junk,&newline);
          F->Opt = (struct OpticsType *) calloc(F->Nopt,sizeof(struct OpticsType));
          for(Io=0;Io<F->Nopt;Io++) {
             O = &F->Opt[Io];
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%ld %ld %ld",3,&O->SC,&O->Body,&O->Node);
-            ScanLine(infile,"%lf",1,&O->ApRad);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%ld %ld %ld %[^\n] %[\n]",
+               &O->SC,&O->Body,&O->Node,junk,&newline);
+            fscanf(infile,"%lf %[^\n] %[\n]",&O->ApRad,junk,&newline);
             O->ApRad /= 2.0;
-            ScanLine(infile,"%lf %lf %lf",3,
-               &O->Axis[0],&O->Axis[1],&O->Axis[2]);
+            fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+               &O->Axis[0],&O->Axis[1],&O->Axis[2],junk,&newline);
             UNITV(O->Axis);
-            ScanLine(infile,"%120s",1,response);
+            fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
             O->Type = DecodeString(response);
-            ScanLine(infile,"%120s",1,response);
+            fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
             O->ConicSign = (double) DecodeString(response);
-            ScanLine(infile,"%lf",1,&O->FocLen);
-            ScanLine(infile,"%lf",1,&O->ConicConst);
+            fscanf(infile,"%lf %[^\n] %[\n]",&O->FocLen,junk,&newline);
+            fscanf(infile,"%lf %[^\n] %[\n]",&O->ConicConst,junk,&newline);
          }
          fclose(infile);
          F->HasOptics = TRUE;
@@ -1882,7 +1820,6 @@ void InitOptics(struct FgsType *F)
       
       printf("Exiting InitOptics\n");
       
-#endif
 }
 /**********************************************************************/
 void InitOrderNDynamics(struct SCType *S)
@@ -1953,10 +1890,10 @@ void InitOrderNDynamics(struct SCType *S)
 void InitSpacecraft(struct SCType *S)
 {
       FILE *infile;
-      char response[121];
-      char response1[121],response2[121],response3[121];
+      char junk[120],newline,response[120];
+      char response1[120],response2[120],response3[120];
       double CBL[3][3],CBF[3][3];
-      long i,j,k,Ia,Ib,Ig,Iw,Im,It,Bi,Bo,Ic,Ist,Ifss,Icam,Ifgs;
+      long i,j,k,Ia,Ib,Ig,Iw,Im,It,Bi,Bo,Ic,Ist,Ifss,Ifgs;
       char RateFrame,AttFrame,AttParm;
       double wlnb[3];
       double wbn[3],CBN[3][3],qbn[4];
@@ -1984,21 +1921,18 @@ void InitSpacecraft(struct SCType *S)
       struct StarTrackerType *ST;
       struct GpsType *GPS;
       struct AccelType *Accel;
-      struct CameraType *Cam;
-      struct POVType *P;
       struct FgsType *Fgs;
       struct PsfType *PSF;
-      long OldNmesh;
-      double Cy180[3][3] = {{-1.0,0.0,0.0},{0.0,1.0,0.0},{0.0,0.0,-1.0}};
+      long OldNgeom;
 
       infile=FileOpen(InOutPath,S->FileName,"r");
-      ScanLine(infile,"",0,NULL);
-      ScanLine(infile,"",0,NULL);
-      ScanLine(infile,"\"%40[^\"]\"",1,S->Label);
-      ScanLine(infile,"%40s",1,S->SpriteFileName);
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      fscanf(infile,"\"%[^\"]\" %[^\n] %[\n]",S->Label,junk,&newline);
+      fscanf(infile,"%s %[^\n] %[\n]",S->SpriteFileName,junk,&newline);
+      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
       S->FswTag = DecodeString(response);
-      ScanLine(infile,"%lf",1,&S->FswSampleTime);
+      fscanf(infile,"%lf %[^\n] %[\n]",&S->FswSampleTime,junk,&newline);
       S->FswMaxCounter = (long) (S->FswSampleTime/DTSIM+0.5);
       if (S->FswSampleTime < DTSIM) {
          printf("Error:  FswSampleTime smaller than DTSIM.\n");
@@ -2008,40 +1942,45 @@ void InitSpacecraft(struct SCType *S)
       S->InitAC = 1;
 
 /* .. Orbit Parameters */
-      ScanLine(infile,"%120s",1,response);
-      if (response[0] != '*') {
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      if (junk[0] != '*') {
          printf("Error:  Malformed SC input file before Orbit Parameter section\n.");
          exit(1);
       }
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
       S->OrbDOF=DecodeString(response);
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
       UseCM=DecodeString(response);
-      ScanLine(infile,"%lf %lf %lf",3,&PosVec[0],&PosVec[1],&PosVec[2]);
-      ScanLine(infile,"%lf %lf %lf",3,&VelVec[0],&VelVec[1],&VelVec[2]);
+      fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+             &PosVec[0],&PosVec[1],&PosVec[2],junk,&newline);
+      fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+             &VelVec[0],&VelVec[1],&VelVec[2],junk,&newline);
 
 /* .. Initial Attitude */
-      ScanLine(infile,"%120s",1,response);
-      if (response[0] != '*') {
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      if (junk[0] != '*') {
          printf("Error:  Malformed SC input file before Initial Attitude section\n.");
          exit(1);
       }
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
       RateFrame=response[0];
       AttParm=response[1];
       AttFrame=response[2];
-      ScanLine(infile,"%lf %lf %lf",3,&wbn[0],&wbn[1],&wbn[2]);
+      fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",&wbn[0],
+             &wbn[1],&wbn[2],junk,&newline);
       wbn[0] *= D2R;
       wbn[1] *= D2R;
       wbn[2] *= D2R;
       if (AttParm == 'Q') {
-         ScanLine(infile,"%lf %lf %lf %lf",4,&qbn[0],&qbn[1],&qbn[2],&qbn[3]);
-         ScanLine(infile,"",0,NULL);
+         fscanf(infile,"%lf %lf %lf %lf %[^\n] %[\n]",
+                &qbn[0],&qbn[1],&qbn[2],&qbn[3],junk,&newline);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
          Q2C(qbn,CBN);
       }
       else {
-         ScanLine(infile,"",0,NULL);
-         ScanLine(infile,"%lf %lf %lf %ld",4,&Ang1,&Ang2,&Ang3,&Seq);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+         fscanf(infile,"%lf %lf %lf %ld %[^\n] %[\n]",
+                &Ang1,&Ang2,&Ang3,&Seq,junk,&newline);
          A2C(Seq,Ang1*D2R,Ang2*D2R,Ang3*D2R,CBN);
          C2Q(CBN,qbn);
       }
@@ -2079,33 +2018,33 @@ void InitSpacecraft(struct SCType *S)
       MxMT(CBN,Frm[S->RefOrb].CN,S->CF);
 
 /* .. Dynamics Flags */
-      ScanLine(infile,"%120s",1,response);
-      if (response[0] != '*') {
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      if (junk[0] != '*') {
          printf("Error:  Malformed SC input file before Dynamics Flags section\n.");
          exit(1);
       }
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
       S->DynMethod=DecodeString(response);
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
       S->ConstraintsRequested=DecodeString(response);
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
       S->RefPt=DecodeString(response);
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
       S->FlexActive=DecodeString(response);
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
       S->IncludeSecondOrderFlexTerms=DecodeString(response);
-      ScanLine(infile,"%40s",1,S->ShakerFileName);
-      ScanLine(infile,"%lf",1,&S->DragCoef);
+      fscanf(infile,"%s %[^\n] %[\n]",S->ShakerFileName,junk,&newline);
+      fscanf(infile,"%lf %[^\n] %[\n]",&S->DragCoef,junk,&newline);
 
 /* .. Body parameters */
-      ScanLine(infile,"",0,NULL);
-      ScanLine(infile,"",0,NULL);
-      ScanLine(infile,"%120s",1,response);
-      if (response[0] != '*') {
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      if (junk[0] != '*') {
          printf("Error:  Malformed SC input file before Body Parameters section\n.");
          exit(1);
       }
-      ScanLine(infile,"%ld",1,&S->Nb);
+      fscanf(infile,"%ld %[^\n] %[\n]",&S->Nb,junk,&newline);
       S->Ng = S->Nb-1;
       S->B = (struct BodyType *) calloc(S->Nb,sizeof(struct BodyType));
       if (S->B == NULL) {
@@ -2128,30 +2067,27 @@ void InitSpacecraft(struct SCType *S)
 /* .. Body Ib */
       for(Ib=0;Ib<S->Nb;Ib++) {
          B = &S->B[Ib];
-         ScanLine(infile,"",0,NULL);
-         ScanLine(infile,"%lf",1,&B->mass);
-         ScanLine(infile,"%lf %lf %lf",3,
-            &B->I[0][0],&B->I[1][1],&B->I[2][2]);
-         ScanLine(infile,"%lf %lf %lf",3,
-            &B->I[0][1],&B->I[0][2],&B->I[1][2]);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+         fscanf(infile,"%lf %[^\n] %[\n]",&B->mass,junk,&newline);
+         fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",&B->I[0][0],
+                  &B->I[1][1],&B->I[2][2],junk,&newline);
+         fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",&B->I[0][1],
+                  &B->I[0][2],&B->I[1][2],junk,&newline);
          B->I[0][1] *= -1.0;
          B->I[0][2] *= -1.0;
          B->I[1][2] *= -1.0;
          B->I[1][0] = B->I[0][1];
          B->I[2][0] = B->I[0][2];
          B->I[2][1] = B->I[1][2];
-         if (!InertiasArePhysical(B->I)) {
-            printf("SC[%ld].B[%ld] inertias are not physically realizable.\n",
-               S->ID,Ib);
-         }
-         ScanLine(infile,"%lf %lf %lf",3,&B->cm[0],&B->cm[1],&B->cm[2]);
-         ScanLine(infile,"%lf %lf %lf",3,
-            &B->EmbeddedMom[0],&B->EmbeddedMom[1],&B->EmbeddedMom[2]);
-         ScanLine(infile,"%lf %lf %lf",3,
-            &B->EmbeddedDipole[0],&B->EmbeddedDipole[1],&B->EmbeddedDipole[2]);
-         ScanLine(infile,"%40s",1,B->MeshFileName);
-         ScanLine(infile,"%40s",1,B->NodeFileName);
-         ScanLine(infile,"%40s",1,B->FlexFileName);
+         fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",&B->cm[0],
+                  &B->cm[1],&B->cm[2],junk,&newline);
+         fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",&B->EmbeddedMom[0],
+                  &B->EmbeddedMom[1],&B->EmbeddedMom[2],junk,&newline);
+         fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",&B->EmbeddedDipole[0],
+                  &B->EmbeddedDipole[1],&B->EmbeddedDipole[2],junk,&newline);
+         fscanf(infile,"%s %[^\n] %[\n]",B->GeomFileName,junk,&newline);
+         fscanf(infile,"%s %[^\n] %[\n]",B->NodeFileName,junk,&newline);
+         fscanf(infile,"%s %[^\n] %[\n]",B->FlexFileName,junk,&newline);
          if (S->RefPt == REFPT_JOINT)
             for(i=0;i<3;i++) B->c[i] = B->mass*B->cm[i];
          else
@@ -2162,24 +2098,25 @@ void InitSpacecraft(struct SCType *S)
 
 /* .. Joint Parameters */
       SomeJointsLocked = FALSE;
-      ScanLine(infile,"",0,NULL);
-      ScanLine(infile,"",0,NULL);
-      ScanLine(infile,"%120s",1,response);
-      if (response[0] != '*') {
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      if (junk[0] != '*') {
          printf("Error:  Malformed SC input file before Joint Parameters section\n.");
          exit(1);
       }
-      ScanLine(infile,"",0,NULL);
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
       if (S->Ng == 0) {  /* Read and discard template */
-         for(i=0;i<16;i++) ScanLine(infile,"",0,NULL);
+         for(i=0;i<16;i++) fscanf(infile,"%[^\n] %[\n]",junk,&newline);
       }
       else {
          for(Ig=0;Ig<S->Ng;Ig++) {
             G = &S->G[Ig];
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%120s",1,response);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
             G->Type = DecodeString(response);
-            ScanLine(infile,"%ld %ld",2,&G->Bin,&G->Bout);
+            fscanf(infile,"%ld %ld %[^\n] %[\n]",
+                   &G->Bin,&G->Bout,junk,&newline);
             if (G->Bin > G->Bout) {
                printf("Yo!  SC[%ld].G[%ld] inner body index (%ld) is greater than outer body index (%ld)\n",S->ID,Ig,G->Bin,G->Bout);
                printf("You must define inner bodies before outer bodies!\n");
@@ -2189,7 +2126,8 @@ void InitSpacecraft(struct SCType *S)
             Bo=G->Bout;
             S->B[Bo].Gin = Ig;
 
-            ScanLine(infile,"%ld %ld %120s",3,&G->RotDOF,&G->RotSeq,response);
+            fscanf(infile,"%ld %ld %s %[^\n] %[\n]",
+               &G->RotDOF,&G->RotSeq,response,junk,&newline);
             G->IsSpherical = DecodeString(response);
             if (G->IsSpherical && G->RotDOF < 3) {
                printf("SC[%ld].G[%ld].RotDOF = %ld is inconsistent with SPHERICAL option.  Reconcile and try again.\n",S->ID,Ig,G->RotDOF);
@@ -2209,7 +2147,8 @@ void InitSpacecraft(struct SCType *S)
                exit(1);
             }
 
-            ScanLine(infile,"%ld %ld",2,&G->TrnDOF,&G->TrnSeq);
+            fscanf(infile,"%ld %ld %[^\n] %[\n]",
+               &G->TrnDOF,&G->TrnSeq,junk,&newline);
             if (G->TrnSeq < 100) {
                printf("Invalid TrnSeq %ld for SC[%ld].G[%ld].  All three axes required.\n",
                   G->TrnSeq,S->ID,Ig);
@@ -2223,13 +2162,13 @@ void InitSpacecraft(struct SCType *S)
                   G->TrnSeq,S->ID,Ig);
                exit(1);
             }
-            ScanLine(infile,"%120s %120s %120s",3,
-               response1,response2,response3);
+            fscanf(infile,"%s %s %s %[^\n] %[\n]",
+               response1,response2,response3,junk,&newline);
             G->RotLocked[0] = DecodeString(response1);
             G->RotLocked[1] = DecodeString(response2);
             G->RotLocked[2] = DecodeString(response3);
-            ScanLine(infile,"%120s %120s %120s",3,
-               response1,response2,response3);
+            fscanf(infile,"%s %s %s %[^\n] %[\n]",
+               response1,response2,response3,junk,&newline);
             G->TrnLocked[0] = DecodeString(response1);
             G->TrnLocked[1] = DecodeString(response2);
             G->TrnLocked[2] = DecodeString(response3);
@@ -2239,9 +2178,10 @@ void InitSpacecraft(struct SCType *S)
             }
 
             /* Load in initial angles and angular rates */
-            ScanLine(infile,"%lf %lf %lf",3,&G->Ang[0],&G->Ang[1],&G->Ang[2]);
-            ScanLine(infile,"%lf %lf %lf",3,
-               &G->AngRate[0],&G->AngRate[1],&G->AngRate[2]);
+            fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+                   &G->Ang[0],&G->Ang[1],&G->Ang[2],junk,&newline);
+            fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+                   &G->AngRate[0],&G->AngRate[1],&G->AngRate[2],junk,&newline);
             for(k=0;k<3;k++) {
                G->Ang[k] *= D2R;
                G->AngRate[k] *= D2R;
@@ -2252,22 +2192,27 @@ void InitSpacecraft(struct SCType *S)
                G->AngRate[k] = 0.0;
             }
             /* Load in initial displacements and rates */
-            ScanLine(infile,"%lf %lf %lf",3,&G->Pos[0],&G->Pos[1],&G->Pos[2]);
-            ScanLine(infile,"%lf %lf %lf",3,
-                  &G->PosRate[0],&G->PosRate[1],&G->PosRate[2]);
+            fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+                  &G->Pos[0],&G->Pos[1],&G->Pos[2],junk,&newline);
+            fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+                  &G->PosRate[0],&G->PosRate[1],&G->PosRate[2],junk,&newline);
             /* Protect against more inputs than TrnDOF */
             for(k=G->TrnDOF;k<3;k++) {
                G->Pos[k] = 0.0;
                G->PosRate[k] = 0.0;
             }
 
-            ScanLine(infile,"%lf %lf %lf %ld",4,&Ang1,&Ang2,&Ang3,&Seq);
+            fscanf(infile,"%lf %lf %lf %ld %[^\n] %[\n]",
+                   &Ang1,&Ang2,&Ang3,&Seq,junk,&newline);
             A2C(Seq,Ang1*D2R,Ang2*D2R,Ang3*D2R,G->CGiBi);
-            ScanLine(infile,"%lf %lf %lf %ld",4,&Ang1,&Ang2,&Ang3,&Seq);
+            fscanf(infile,"%lf %lf %lf %ld %[^\n] %[\n]",
+                  &Ang1,&Ang2,&Ang3,&Seq,junk,&newline);
             A2C(Seq,Ang1*D2R,Ang2*D2R,Ang3*D2R,G->CBoGo);
 
-            ScanLine(infile,"%lf %lf %lf",3,&pIn[0],&pIn[1],&pIn[2]);
-            ScanLine(infile,"%lf %lf %lf",3,&pOut[0],&pOut[1],&pOut[2]);
+            fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+                   &pIn[0],&pIn[1],&pIn[2],junk,&newline);
+            fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+                   &pOut[0],&pOut[1],&pOut[2],junk,&newline);
 
             if (S->RefPt == REFPT_JOINT) {
                for(j=0;j<3;j++) {
@@ -2281,7 +2226,7 @@ void InitSpacecraft(struct SCType *S)
                   G->RigidRout[j] = pOut[j] - S->B[Bo].cm[j];
                }
             }
-            ScanLine(infile,"%40s",1,G->ParmFileName);
+            fscanf(infile,"%s %[^\n] %[\n]",G->ParmFileName,junk,&newline);
 
             if (G->Type == PASSIVE_JOINT) InitPassiveJoint(G,S);
             if (G->Type == ACTUATED_JOINT) InitActuatedJoint(G,S);
@@ -2289,60 +2234,64 @@ void InitSpacecraft(struct SCType *S)
       }
 
 /* .. Wheel parameters */
-      ScanLine(infile,"%120s",1,response);
-      if (response[0] != '*') {
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      if (junk[0] != '*') {
          printf("Error:  Malformed SC input file before Wheel Parameters section\n.");
          exit(1);
       }
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
       S->WhlDragActive=DecodeString(response);
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
       S->WhlJitterActive=DecodeString(response);
-      ScanLine(infile,"%ld",1,&S->Nw);
+      fscanf(infile,"%ld %[^\n] %[\n]",&S->Nw,junk,&newline);
       S->Whl = (struct WhlType *) calloc(S->Nw,sizeof(struct WhlType));
       if (S->Nw == 0) {
-         for(i=0;i<8;i++) ScanLine(infile,"",0,NULL);
+         for(i=0;i<8;i++) fscanf(infile,"%[^\n] %[\n]",junk,&newline);
       }
       else {
          for(Iw=0;Iw<S->Nw;Iw++) {
             W = &S->Whl[Iw];
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%lf",1,&W->H);
-            ScanLine(infile,"%lf %lf %lf",3,&W->A[0],&W->A[1],&W->A[2]);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%lf %[^\n] %[\n]",&W->H,junk,&newline);
+            fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+                &W->A[0],&W->A[1],&W->A[2],junk,&newline);
             UNITV(W->A);
             PerpBasis(W->A,W->Uaxis,W->Vaxis);
-            ScanLine(infile,"%lf %lf",2,&W->Tmax,&W->Hmax);
-            ScanLine(infile,"%lf",1,&W->J);
-            ScanLine(infile,"%ld",1,&W->Body);
-            ScanLine(infile,"%ld",1,&W->Node);
+            fscanf(infile,"%lf %lf %[^\n] %[\n]",
+                &W->Tmax,&W->Hmax,junk,&newline);
+            fscanf(infile,"%lf %[^\n] %[\n]",&W->J,junk,&newline);
+            fscanf(infile,"%ld %[^\n] %[\n]",&W->Body,junk,&newline);
+            fscanf(infile,"%ld %[^\n] %[\n]",&W->Node,junk,&newline);
             if (W->Node >= S->B[W->Body].NumNodes) {
                printf("SC[%ld].Whl[%ld] Node out of range\n",S->ID,Iw);
                exit(1);
             } 
-            ScanLine(infile,"%40s",1,W->DragJitterFileName);
+            fscanf(infile,"%s %[^\n] %[\n]",W->DragJitterFileName,junk,&newline);
             InitWhlDragAndJitter(W);
          }
       }
 
 /* .. MTB parameters */
-      ScanLine(infile,"%120s",1,response);
-      if (response[0] != '*') {
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      if (junk[0] != '*') {
          printf("Error:  Malformed SC input file before MTB Parameters section\n.");
          exit(1);
       }
-      ScanLine(infile,"%ld",1,&S->Nmtb);
+      fscanf(infile,"%ld %[^\n] %[\n]",&S->Nmtb,junk,&newline);
       S->MTB = (struct MTBType *) calloc(S->Nmtb,sizeof(struct MTBType));
       if (S->Nmtb == 0) {
-         for(i=0;i<4;i++) ScanLine(infile,"",0,NULL);
+         for(i=0;i<4;i++) fscanf(infile,"%[^\n] %[\n]",junk,&newline);
       }
       else {
          for(Im=0;Im<S->Nmtb;Im++) {
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%lf",1,&S->MTB[Im].Mmax);
-            ScanLine(infile,"%lf %lf %lf",3,
-               &S->MTB[Im].A[0],&S->MTB[Im].A[1],&S->MTB[Im].A[2]);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%lf  %[^\n] %[\n]",
+               &S->MTB[Im].Mmax,junk,&newline);
+            fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+               &S->MTB[Im].A[0],&S->MTB[Im].A[1],&S->MTB[Im].A[2],
+                   junk,&newline);
             UNITV(S->MTB[Im].A);
-            ScanLine(infile,"%ld",1,&S->MTB[Im].Node);
+            fscanf(infile,"%ld %[^\n] %[\n]",&S->MTB[Im].Node,junk,&newline);
             if (S->MTB[Im].Node >= S->B[0].NumNodes) {
                printf("SC[%ld].MTB[%ld] Node out of range\n",S->ID,Im);
                exit(1);
@@ -2352,27 +2301,30 @@ void InitSpacecraft(struct SCType *S)
       }
 
 /* .. Thruster parameters */
-      ScanLine(infile,"%120s",1,response);
-      if (response[0] != '*') {
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      if (junk[0] != '*') {
          printf("Error:  Malformed SC input file before Thruster Parameters section\n.");
          exit(1);
       }
-      ScanLine(infile,"%ld",1,&S->Nthr);
+      fscanf(infile,"%ld %[^\n] %[\n]",&S->Nthr,junk,&newline);
       S->Thr = (struct ThrType *) calloc(S->Nthr,sizeof(struct ThrType));
       if (S->Nthr == 0) {
-         for(i=0;i<6;i++) ScanLine(infile,"",0,NULL);
+         for(i=0;i<6;i++) fscanf(infile,"%[^\n] %[\n]",junk,&newline);
       }
       else {
          for(It=0;It<S->Nthr;It++) {
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%120s",1,response);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
             S->Thr[It].Mode = DecodeString(response);
-            ScanLine(infile,"%lf",1,&S->Thr[It].Fmax);
-            ScanLine(infile,"%lf %lf %lf",3,
-               &S->Thr[It].A[0],&S->Thr[It].A[1],&S->Thr[It].A[2]);
+            fscanf(infile,"%lf %[^\n] %[\n]",&S->Thr[It].Fmax,
+                   junk,&newline);
+            fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+                   &S->Thr[It].A[0],
+                   &S->Thr[It].A[1],
+                   &S->Thr[It].A[2],junk,&newline);
             UNITV(S->Thr[It].A);
-            ScanLine(infile,"%ld",1,&S->Thr[It].Body);
-            ScanLine(infile,"%ld",1,&S->Thr[It].Node);
+            fscanf(infile,"%ld %[^\n] %[\n]",&S->Thr[It].Body,junk,&newline);
+            fscanf(infile,"%ld %[^\n] %[\n]",&S->Thr[It].Node,junk,&newline);
             if (S->Thr[It].Node >= S->B[S->Thr[It].Body].NumNodes) {
                printf("SC[%ld].Thr[%ld] Node out of range\n",S->ID,It);
                exit(1);
@@ -2382,45 +2334,45 @@ void InitSpacecraft(struct SCType *S)
       }
 
 /* .. Gyro Parameters */
-      ScanLine(infile,"%120s",1,response);
-      if (response[0] != '*') {
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      if (junk[0] != '*') {
          printf("Error:  Malformed SC input file before Gyro section\n.");
          exit(1);
       }
-      ScanLine(infile,"%ld",1,&S->Ngyro);
+      fscanf(infile,"%ld %[^\n] %[\n]",&S->Ngyro,junk,&newline);
       S->Gyro = (struct GyroType *) calloc(S->Ngyro,sizeof(struct GyroType));
       if (S->Ngyro == 0) {
-         for(i=0;i<11;i++) ScanLine(infile,"",0,NULL);
+         for(i=0;i<11;i++) fscanf(infile,"%[^\n] %[\n]",junk,&newline);
       }
       else {
          for(Ig=0;Ig<S->Ngyro;Ig++) {
             Gyro = &S->Gyro[Ig];
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%lf",1,&Gyro->SampleTime);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%lf %[^\n] %[\n]",&Gyro->SampleTime,junk,&newline);
             Gyro->MaxCounter = (long) (Gyro->SampleTime/DTSIM+0.5);
             if (Gyro->SampleTime < DTSIM) {
                printf("Error:  Gyro[%ld].SampleTime smaller than DTSIM.\n",Ig);
                exit(1);
             }
             Gyro->SampleCounter = Gyro->MaxCounter;
-            ScanLine(infile,"%lf %lf %lf",3,
-               &Gyro->Axis[0],&Gyro->Axis[1],&Gyro->Axis[2]);
+            fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+               &Gyro->Axis[0],&Gyro->Axis[1],&Gyro->Axis[2],junk,&newline);
             UNITV(Gyro->Axis);
-            ScanLine(infile,"%lf",1,&Gyro->MaxRate);
+            fscanf(infile,"%lf %[^\n] %[\n]",&Gyro->MaxRate,junk,&newline);
             Gyro->MaxRate *= D2R;
-            ScanLine(infile,"%lf",1,&Gyro->Scale);
+            fscanf(infile,"%lf %[^\n] %[\n]",&Gyro->Scale,junk,&newline);
             Gyro->Scale = 1.0+1.0E-6*Gyro->Scale;
-            ScanLine(infile,"%lf",1,&Gyro->Quant);
+            fscanf(infile,"%lf %[^\n] %[\n]",&Gyro->Quant,junk,&newline);
             Gyro->Quant *= D2R/3600.0;
-            ScanLine(infile,"%lf",1,&Gyro->SigV);
+            fscanf(infile,"%lf %[^\n] %[\n]",&Gyro->SigV,junk,&newline);
             Gyro->SigV *= D2R/60.0; /* from deg/rt-hr to rad/rt-sec */
-            ScanLine(infile,"%lf %lf",2,&Gyro->SigU,&BiasTime);
+            fscanf(infile,"%lf %lf %[^\n] %[\n]",&Gyro->SigU,&BiasTime,junk,&newline);
             Gyro->SigU *= D2R/3600.0/sqrt(BiasTime*3600.0);
-            ScanLine(infile,"%lf",1,&Gyro->SigE);
+            fscanf(infile,"%lf %[^\n] %[\n]",&Gyro->SigE,junk,&newline);
             Gyro->SigE *= D2R/3600.0;
-            ScanLine(infile,"%lf",1,&Gyro->Bias);
+            fscanf(infile,"%lf %[^\n] %[\n]",&Gyro->Bias,junk,&newline);
             Gyro->Bias *= D2R/3600.0;
-            ScanLine(infile,"%ld",1,&Gyro->Node);
+            fscanf(infile,"%ld %[^\n] %[\n]",&Gyro->Node,junk,&newline);
             if (Gyro->Node >= S->B[0].NumNodes) {
                printf("SC[%ld].Gyro Node out of range\n",S->ID);
                exit(1);
@@ -2436,36 +2388,36 @@ void InitSpacecraft(struct SCType *S)
       }
       
 /* .. Magnetometer Parameters */
-      ScanLine(infile,"%120s",1,response);
-      if (response[0] != '*') {
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      if (junk[0] != '*') {
          printf("Error:  Malformed SC input file before Magnetometer section\n.");
          exit(1);
       }
-      ScanLine(infile,"%ld",1,&S->Nmag);
+      fscanf(infile,"%ld %[^\n] %[\n]",&S->Nmag,junk,&newline);
       S->MAG = (struct MagnetometerType *) calloc(S->Nmag,sizeof(struct MagnetometerType));
       if (S->Nmag == 0) {
-         for(i=0;i<8;i++) ScanLine(infile,"",0,NULL);
+         for(i=0;i<8;i++) fscanf(infile,"%[^\n] %[\n]",junk,&newline);
       }
       else {
          for(Im=0;Im<S->Nmag;Im++) {
             MAG = &S->MAG[Im];
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%lf",1,&MAG->SampleTime);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%lf %[^\n] %[\n]",&MAG->SampleTime,junk,&newline);
             MAG->MaxCounter = (long) (MAG->SampleTime/DTSIM+0.5);
             if (MAG->SampleTime < DTSIM) {
                printf("Error:  MAG[%ld].SampleTime smaller than DTSIM.\n",Im);
                exit(1);
             }
             MAG->SampleCounter = MAG->MaxCounter;
-            ScanLine(infile,"%lf %lf %lf",3,
-               &MAG->Axis[0],&MAG->Axis[1],&MAG->Axis[2]);
+            fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+               &MAG->Axis[0],&MAG->Axis[1],&MAG->Axis[2],junk,&newline);
             UNITV(MAG->Axis);
-            ScanLine(infile,"%lf",1,&MAG->Saturation);
-            ScanLine(infile,"%lf",1,&MAG->Scale);
+            fscanf(infile,"%lf %[^\n] %[\n]",&MAG->Saturation,junk,&newline);
+            fscanf(infile,"%lf %[^\n] %[\n]",&MAG->Scale,junk,&newline);
             MAG->Scale = 1.0+1.0E-6*MAG->Scale;
-            ScanLine(infile,"%lf",1,&MAG->Quant);
-            ScanLine(infile,"%lf",1,&MAG->Noise);
-            ScanLine(infile,"%ld",1,&MAG->Node);
+            fscanf(infile,"%lf %[^\n] %[\n]",&MAG->Quant,junk,&newline);
+            fscanf(infile,"%lf %[^\n] %[\n]",&MAG->Noise,junk,&newline);
+            fscanf(infile,"%ld %[^\n] %[\n]",&MAG->Node,junk,&newline);
             if (MAG->Node >= S->B[0].NumNodes) {
                printf("SC[%ld].MAG[%ld] Node out of range\n",S->ID,Im);
                exit(1);
@@ -2474,37 +2426,37 @@ void InitSpacecraft(struct SCType *S)
       }
       
 /* .. Coarse Sun Sensors */
-      ScanLine(infile,"%120s",1,response);
-      if (response[0] != '*') {
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      if (junk[0] != '*') {
          printf("Error:  Malformed SC input file before Coarse Sun Sensor section\n.");
          exit(1);
       }
-      ScanLine(infile,"%ld",1,&S->Ncss);
+      fscanf(infile,"%ld %[^\n] %[\n]",&S->Ncss,junk,&newline);
       S->CSS = (struct CssType *) calloc(S->Ncss,sizeof(struct CssType));
       if (S->Ncss == 0) {
-         for(i=0;i<8;i++) ScanLine(infile,"",0,NULL);
+         for(i=0;i<8;i++) fscanf(infile,"%[^\n] %[\n]",junk,&newline);
       }
       else {
          for(Ic=0;Ic<S->Ncss;Ic++) {
             CSS = &S->CSS[Ic];
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%lf",1,&CSS->SampleTime);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%lf %[^\n] %[\n]",&CSS->SampleTime,junk,&newline);
             CSS->MaxCounter = (long) (CSS->SampleTime/DTSIM+0.5);
             if (CSS->SampleTime < DTSIM) {
                printf("Error:  CSS[%ld].SampleTime smaller than DTSIM.\n",Ig);
                exit(1);
             }
             CSS->SampleCounter = CSS->MaxCounter;
-            ScanLine(infile,"%lf %lf %lf",3,
-               &CSS->Axis[0],&CSS->Axis[1],&CSS->Axis[2]);
+            fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+               &CSS->Axis[0],&CSS->Axis[1],&CSS->Axis[2],junk,&newline);
             UNITV(CSS->Axis);
-            ScanLine(infile,"%lf",1,&CSS->FovHalfAng);
+            fscanf(infile,"%lf %[^\n] %[\n]",&CSS->FovHalfAng,junk,&newline);
             CSS->FovHalfAng *= D2R;
             CSS->CosFov = cos(CSS->FovHalfAng);
-            ScanLine(infile,"%lf",1,&CSS->Scale);
-            ScanLine(infile,"%lf",1,&CSS->Quant);
-            ScanLine(infile,"%ld",1,&CSS->Body);
-            ScanLine(infile,"%ld",1,&CSS->Node);
+            fscanf(infile,"%lf %[^\n] %[\n]",&CSS->Scale,junk,&newline);
+            fscanf(infile,"%lf %[^\n] %[\n]",&CSS->Quant,junk,&newline);
+            fscanf(infile,"%ld %[^\n] %[\n]",&CSS->Body,junk,&newline);
+            fscanf(infile,"%ld %[^\n] %[\n]",&CSS->Node,junk,&newline);
             if (CSS->Node >= S->B[CSS->Body].NumNodes) {
                printf("SC[%ld].CSS[%ld] Node out of range\n",S->ID,Ic);
                exit(1);
@@ -2513,44 +2465,45 @@ void InitSpacecraft(struct SCType *S)
       }
 
 /* .. Fine Sun Sensors */
-      ScanLine(infile,"%120s",1,response);
-      if (response[0] != '*') {
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      if (junk[0] != '*') {
          printf("Error:  Malformed SC input file before Fine Sun Sensor section\n.");
          exit(1);
       }
-      ScanLine(infile,"%ld",1,&S->Nfss);
+      fscanf(infile,"%ld %[^\n] %[\n]",&S->Nfss,junk,&newline);
       S->FSS = (struct FssType *) calloc(S->Nfss,sizeof(struct FssType));
       if (S->Nfss == 0) {
-         for(i=0;i<8;i++) ScanLine(infile,"",0,NULL);
+         for(i=0;i<8;i++) fscanf(infile,"%[^\n] %[\n]",junk,&newline);
       }
       else {
          for(Ifss=0;Ifss<S->Nfss;Ifss++) {
             FSS = &S->FSS[Ifss];
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%lf",1,&FSS->SampleTime);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%lf %[^\n] %[\n]",&FSS->SampleTime,junk,&newline);
             FSS->MaxCounter = (long) (FSS->SampleTime/DTSIM+0.5);
             if (FSS->SampleTime < DTSIM) {
                printf("Error:  FSS[%ld].SampleTime smaller than DTSIM.\n",Ig);
                exit(1);
             }
             FSS->SampleCounter = FSS->MaxCounter;
-            ScanLine(infile,"%lf %lf %lf %ld",4,&Ang1,&Ang2,&Ang3,&Seq);
+            fscanf(infile,"%lf %lf %lf %ld %[^\n] %[\n]",
+               &Ang1,&Ang2,&Ang3,&Seq,junk,&newline);
             A2C(Seq,Ang1*D2R,Ang2*D2R,Ang3*D2R,FSS->CB);
             C2Q(FSS->CB,FSS->qb);
-            ScanLine(infile,"%120s",1,response);
+            fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
             FSS->BoreAxis = DecodeString(response);
             FSS->H_Axis = (FSS->BoreAxis+1)%3;
             FSS->V_Axis = (FSS->BoreAxis+2)%3;
-            ScanLine(infile,"%lf %lf",2,
-               &FSS->FovHalfAng[0],&FSS->FovHalfAng[1]);
+            fscanf(infile,"%lf %lf %[^\n] %[\n]",
+               &FSS->FovHalfAng[0],&FSS->FovHalfAng[1],junk,&newline);
             for(i=0;i<2;i++) {
                FSS->FovHalfAng[i] *= 0.5*D2R;
             }
-            ScanLine(infile,"%lf",1,&FSS->NEA);
+            fscanf(infile,"%lf %[^\n] %[\n]",&FSS->NEA,junk,&newline);
             FSS->NEA *= D2R;
-            ScanLine(infile,"%lf",1,&FSS->Quant);
+            fscanf(infile,"%lf %[^\n] %[\n]",&FSS->Quant,junk,&newline);
             FSS->Quant *= D2R;
-            ScanLine(infile,"%ld",1,&FSS->Node);
+            fscanf(infile,"%ld %[^\n] %[\n]",&FSS->Node,junk,&newline);
             if (FSS->Node >= S->B[0].NumNodes) {
                printf("SC[%ld].FSS[%ld] Node out of range\n",S->ID,Ifss);
                exit(1);
@@ -2559,52 +2512,54 @@ void InitSpacecraft(struct SCType *S)
       }
       
 /* .. Star Trackers */
-      ScanLine(infile,"%120s",1,response);
-      if (response[0] != '*') {
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      if (junk[0] != '*') {
          printf("Error:  Malformed SC input file before Star Tracker section\n.");
          exit(1);
       }
-      ScanLine(infile,"%ld",1,&S->Nst);
+      fscanf(infile,"%ld %[^\n] %[\n]",&S->Nst,junk,&newline);
       S->ST = (struct StarTrackerType *) calloc(S->Nst,sizeof(struct StarTrackerType));
       if (S->Nst == 0) {
-         for(i=0;i<8;i++) ScanLine(infile,"",0,NULL);
+         for(i=0;i<8;i++) fscanf(infile,"%[^\n] %[\n]",junk,&newline);
       }
       else {
          for(Ist=0;Ist<S->Nst;Ist++) {
             ST = &S->ST[Ist];
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%lf",1,&ST->SampleTime);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%lf %[^\n] %[\n]",&ST->SampleTime,junk,&newline);
             ST->MaxCounter = (long) (ST->SampleTime/DTSIM+0.5);
             if (ST->SampleTime < DTSIM) {
                printf("Error:  ST[%ld].SampleTime smaller than DTSIM.\n",Ig);
                exit(1);
             }
             ST->SampleCounter = ST->MaxCounter;
-            ScanLine(infile,"%lf %lf %lf %ld",4,&Ang1,&Ang2,&Ang3,&Seq);
+            fscanf(infile,"%lf %lf %lf %ld %[^\n] %[\n]",
+               &Ang1,&Ang2,&Ang3,&Seq,junk,&newline);
             A2C(Seq,Ang1*D2R,Ang2*D2R,Ang3*D2R,ST->CB);
             C2Q(ST->CB,ST->qb);
-            ScanLine(infile,"%120s",1,response);
+            fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
             ST->BoreAxis = DecodeString(response);
             ST->H_Axis = (ST->BoreAxis+1)%3;
             ST->V_Axis = (ST->BoreAxis+2)%3;
-            ScanLine(infile,"%lf %lf",2,
-               &ST->FovHalfAng[0],&ST->FovHalfAng[1]);
+            fscanf(infile,"%lf %lf %[^\n] %[\n]",
+               &ST->FovHalfAng[0],&ST->FovHalfAng[1],junk,&newline);
             for(i=0;i<2;i++) {
                ST->FovHalfAng[i] *= 0.5*D2R;
                ST->CosFov[i] = cos(ST->FovHalfAng[i]);
             }
-            ScanLine(infile,"%lf %lf %lf",3,
-               &ST->SunExclAng,&ST->EarthExclAng,&ST->MoonExclAng);
+            fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+               &ST->SunExclAng,&ST->EarthExclAng,&ST->MoonExclAng,junk,&newline);
             ST->SunExclAng *= D2R;
             ST->EarthExclAng *= D2R;
             ST->MoonExclAng *= D2R;
             ST->CosSunExclAng = cos(ST->SunExclAng);
             ST->CosEarthExclAng = cos(ST->EarthExclAng);
             ST->CosMoonExclAng = cos(ST->MoonExclAng);
-            ScanLine(infile,"%lf %lf %lf",3,
-               &ST->NEA[0],&ST->NEA[1],&ST->NEA[2]);
+            fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+               &ST->NEA[0],&ST->NEA[1],&ST->NEA[2],junk,&newline);
             for(i=0;i<3;i++) ST->NEA[i] *= D2R/3600.0;
-            ScanLine(infile,"%ld",1,&ST->Node);
+            fscanf(infile,"%ld %[^\n] %[\n]",
+               &ST->Node,junk,&newline);
             if (ST->Node >= S->B[0].NumNodes) {
                printf("SC[%ld].ST[%ld] Node out of range\n",S->ID,Ist);
                exit(1);
@@ -2613,31 +2568,31 @@ void InitSpacecraft(struct SCType *S)
       }
       
 /* .. GPS Sensors */
-      ScanLine(infile,"%120s",1,response);
-      if (response[0] != '*') {
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      if (junk[0] != '*') {
          printf("Error:  Malformed SC input file before GPS section\n.");
          exit(1);
       }
-      ScanLine(infile,"%ld",1,&S->Ngps);
+      fscanf(infile,"%ld %[^\n] %[\n]",&S->Ngps,junk,&newline);
       S->GPS = (struct GpsType *) calloc(S->Ngps,sizeof(struct GpsType));
       if (S->Ngps == 0) {
-         for(i=0;i<6;i++) ScanLine(infile,"",0,NULL);
+         for(i=0;i<6;i++) fscanf(infile,"%[^\n] %[\n]",junk,&newline);
       }
       else {
          for(Ig=0;Ig<S->Ngps;Ig++) {
             GPS = &S->GPS[Ig];
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%lf",1,&GPS->SampleTime);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%lf %[^\n] %[\n]",&GPS->SampleTime,junk,&newline);
             GPS->MaxCounter = (long) (GPS->SampleTime/DTSIM+0.5);
             if (GPS->SampleTime < DTSIM) {
                printf("Error:  GPS[%ld].SampleTime smaller than DTSIM.\n",Ig);
                exit(1);
             }
             GPS->SampleCounter = GPS->MaxCounter;
-            ScanLine(infile,"%lf",1,&GPS->PosNoise);
-            ScanLine(infile,"%lf",1,&GPS->VelNoise);
-            ScanLine(infile,"%lf",1,&GPS->TimeNoise);
-            ScanLine(infile,"%ld",1,&GPS->Node);
+            fscanf(infile,"%lf %[^\n] %[\n]",&GPS->PosNoise,junk,&newline);
+            fscanf(infile,"%lf %[^\n] %[\n]",&GPS->VelNoise,junk,&newline);
+            fscanf(infile,"%lf %[^\n] %[\n]",&GPS->TimeNoise,junk,&newline);
+            fscanf(infile,"%ld %[^\n] %[\n]",&GPS->Node,junk,&newline);
             if (GPS->Node >= S->B[0].NumNodes) {
                printf("SC[%ld].GPS[%ld] Node out of range\n",S->ID,Ig);
                exit(1);
@@ -2646,41 +2601,41 @@ void InitSpacecraft(struct SCType *S)
       }
       
 /* .. Accelerometers */
-      ScanLine(infile,"%120s",1,response);
-      if (response[0] != '*') {
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      if (junk[0] != '*') {
          printf("Error:  Malformed SC input file before Accelerometer section\n.");
          exit(1);
       }
-      ScanLine(infile,"%ld",1,&S->Nacc);
+      fscanf(infile,"%ld %[^\n] %[\n]",&S->Nacc,junk,&newline);
       S->Accel = (struct AccelType *) calloc(S->Nacc,sizeof(struct AccelType));
       if (S->Nacc == 0) {
-         for(i=0;i<11;i++) ScanLine(infile,"",0,NULL);
+         for(i=0;i<11;i++) fscanf(infile,"%[^\n] %[\n]",junk,&newline);
       }
       else {
          for(Ia=0;Ia<S->Nacc;Ia++) {
             Accel = &S->Accel[Ia];
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%lf",1,&Accel->SampleTime);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%lf %[^\n] %[\n]",&Accel->SampleTime,junk,&newline);
             Accel->MaxCounter = (long) (Accel->SampleTime/DTSIM+0.5);
             if (Accel->SampleTime < DTSIM) {
                printf("Error:  Accel[%ld].SampleTime smaller than DTSIM.\n",Ia);
                exit(1);
             }
             Accel->SampleCounter = Accel->MaxCounter;
-            ScanLine(infile,"%lf %lf %lf",3,
-               &Accel->Axis[0],&Accel->Axis[1],&Accel->Axis[2]);
+            fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+               &Accel->Axis[0],&Accel->Axis[1],&Accel->Axis[2],junk,&newline);
             UNITV(Accel->Axis);
-            ScanLine(infile,"%lf",1,&Accel->MaxAcc);
-            ScanLine(infile,"%lf",1,&Accel->Scale);
+            fscanf(infile,"%lf %[^\n] %[\n]",&Accel->MaxAcc,junk,&newline);
+            fscanf(infile,"%lf %[^\n] %[\n]",&Accel->Scale,junk,&newline);
             Accel->Scale = 1.0+1.0E-6*Accel->Scale;
-            ScanLine(infile,"%lf",1,&Accel->Quant);
-            ScanLine(infile,"%lf",1,&Accel->SigV);
+            fscanf(infile,"%lf %[^\n] %[\n]",&Accel->Quant,junk,&newline);
+            fscanf(infile,"%lf %[^\n] %[\n]",&Accel->SigV,junk,&newline);
             Accel->SigV /= 60.0; /* from m/s/rt-hr to m/s/rt-sec */
-            ScanLine(infile,"%lf %lf",2,&Accel->SigU,&BiasTime);
+            fscanf(infile,"%lf %lf %[^\n] %[\n]",&Accel->SigU,&BiasTime,junk,&newline);
             Accel->SigU /= sqrt(BiasTime*3600.0);
-            ScanLine(infile,"%lf",1,&Accel->SigE);
-            ScanLine(infile,"%lf",1,&Accel->Bias);
-            ScanLine(infile,"%ld",1,&Accel->Node);
+            fscanf(infile,"%lf %[^\n] %[\n]",&Accel->SigE,junk,&newline);
+            fscanf(infile,"%lf %[^\n] %[\n]",&Accel->Bias,junk,&newline);
+            fscanf(infile,"%ld %[^\n] %[\n]",&Accel->Node,junk,&newline);
             if (Accel->Node >= S->B[0].NumNodes) {
                printf("SC[%ld].Accel[%ld] Node out of range\n",S->ID,Ia);
                exit(1);
@@ -2694,162 +2649,65 @@ void InitSpacecraft(struct SCType *S)
          }
       }
 
-/* .. Cameras */
-      ScanLine(infile,"%120s",1,response);
-      if (response[0] != '*') {
-         printf("Error:  Malformed SC input file before Camera section\n.");
-         exit(1);
-      }
-      ScanLine(infile,"%ld",1,&S->Ncam);
-      S->Cam = (struct CameraType *) calloc(S->Ncam,sizeof(struct CameraType));
-      if (S->Ncam == 0) {
-         for(i=0;i<12;i++) ScanLine(infile,"",0,NULL);
-      }
-      else {
-         for(Icam=0;Icam<S->Ncam;Icam++) {
-            Cam = &S->Cam[Icam];
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%lf",1,&Cam->SampleTime);
-            Cam->MaxCounter = (long) (Cam->SampleTime/DTSIM+0.5);
-            if (Cam->SampleTime < DTSIM) {
-               printf("Error:  SC[%ld].Cam[%ld].SampleTime smaller than DTSIM.\n",
-                  S->ID,Icam);
-               exit(1);
-            }
-            Cam->SampleCounter = Cam->MaxCounter;
-            ScanLine(infile,"\"%80[^\"]\"",1,Cam->Title);
-            ScanLine(infile,"%ld %ld",2,&Cam->Body,&Cam->Node);
-            if (Cam->Body >= S->Nb) {
-               printf("SC[%ld].Cam[%ld] Body out of range\n",S->ID,Icam);
-               exit(1);
-            } 
-            if (Cam->Node >= S->B[Cam->Body].NumNodes) {
-               printf("SC[%ld].Cam[%ld] Node out of range\n",S->ID,Icam);
-               exit(1);
-            } 
-            ScanLine(infile,"%lf %lf %lf %ld",4,&Ang1,&Ang2,&Ang3,&Seq);
-            A2C(Seq,Ang1*D2R,Ang2*D2R,Ang3*D2R,Cam->CB);
-            C2Q(Cam->CB,Cam->qb);
-            ScanLine(infile,"%120s",1,response);
-            Cam->BoreAxis = DecodeString(response);
-            Cam->H_Axis = (Cam->BoreAxis+1)%3;
-            Cam->V_Axis = (Cam->BoreAxis+2)%3;
-            ScanLine(infile,"%d %d",2,&Cam->PosX,&Cam->PosY);
-            P = &Cam->POV;
-            ScanLine(infile,"%d %d",2,&P->PixWidth,&P->PixHeight);
-            ScanLine(infile,"%lf",1,&P->Angle);
-            ScanLine(infile,"%lf %lf",2,&P->Near,&P->Far);
-            P->Mode = FIXED_IN_HOST;
-            P->Host.Type = TARGET_BODY;
-            P->Host.Body = Cam->Body;
-            P->Host.SC = S->ID;
-            P->Host.RefOrb = S->RefOrb;
-            P->Host.World = Orb[S->RefOrb].World;
-            P->Frame = FRAME_B;
-            for(i=0;i<3;i++) {
-               P->PosB[i] = S->B[Cam->Body].Node[Cam->Node].PosB[i];
-            }
-            /* POV axes are H-left, V-up, Boresight-out */
-            MxM(Cam->CB,Cy180,P->CB);
-            MxM(Cam->CB,Cy180,P->C);
-            C2Q(P->C,P->q);
-            ScanLine(infile,"%120s",1,response);
-            Cam->PixelFormat = DecodeString(response);
-            ScanLine(infile,"%120s %120s",2,response1,response2);
-            Cam->Display = DecodeString(response1);
-            Cam->Export = DecodeString(response2);
-            if (Cam->PixelFormat == PIX_DEPTH)
-               P->FarSceneEnabled = FALSE;
-            else
-               P->FarSceneEnabled = TRUE;
-            if (Cam->Export) {
-               if (Cam->PixelFormat == PIX_RGB) {
-                  Cam->BytesPerPixel = 3;
-                  Cam->ImageLen = P->PixWidth*P->PixHeight*Cam->BytesPerPixel;
-                  Cam->ColorImage = 
-                     (unsigned char *) calloc(Cam->ImageLen,sizeof(char));
-                  Cam->DepthImage = NULL;
-               }
-               else if (Cam->PixelFormat == PIX_RGBA) {
-                  Cam->BytesPerPixel = 4;
-                  Cam->ImageLen = P->PixWidth*P->PixHeight*Cam->BytesPerPixel;
-                  Cam->ColorImage = 
-                     (unsigned char *) calloc(Cam->ImageLen,sizeof(char));
-                  Cam->DepthImage = NULL;
-               }
-               else if (Cam->PixelFormat == PIX_DEPTH) {
-                  Cam->BytesPerPixel = sizeof(float);
-                  Cam->ImageLen = P->PixWidth*P->PixHeight;
-                  Cam->ColorImage = NULL;
-                  Cam->DepthImage = (float *) calloc(Cam->ImageLen,sizeof(float));
-               }
-               else {
-                  printf("Unknown PixelFormat %ld for Cam[%ld]\n",
-                     Cam->PixelFormat,Icam);
-                  exit(1);
-               }
-            }
-            
-            Cam->Init = TRUE;
-         }
-      }
-
 /* .. Fine Guidance Sensors */
-      ScanLine(infile,"%120s",1,response);
-      if (response[0] != '*') {
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      if (junk[0] != '*') {
          printf("Error:  Malformed SC input file before Fine Guidance Sensor section\n.");
          exit(1);
       }
-      ScanLine(infile,"%ld",1,&S->Nfgs);
+      fscanf(infile,"%ld %[^\n] %[\n]",&S->Nfgs,junk,&newline);
       S->Fgs = (struct FgsType *) calloc(S->Nfgs,sizeof(struct FgsType));
       if (S->Nfgs == 0) {
-         for(i=0;i<7;i++) ScanLine(infile,"",0,NULL);
+         for(i=0;i<7;i++) fscanf(infile,"%[^\n] %[\n]",junk,&newline);
       }
       else {
          for(Ifgs=0;Ifgs<S->Nfgs;Ifgs++) {
             Fgs = &S->Fgs[Ifgs];
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%lf",1,&Fgs->SampleTime);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%lf %[^\n] %[\n]",&Fgs->SampleTime,junk,&newline);
             Fgs->MaxCounter = (long) (Fgs->SampleTime/DTSIM+0.5);
             if (Fgs->SampleTime < DTSIM) {
                printf("Error:  Fgs[%ld].SampleTime smaller than DTSIM.\n",Ifgs);
                exit(1);
             }
             Fgs->SampleCounter = Fgs->MaxCounter;
-            ScanLine(infile,"%lf %lf %lf %ld",4,&Ang1,&Ang2,&Ang3,&Seq);
+            fscanf(infile,"%lf %lf %lf %ld %[^\n] %[\n]",
+               &Ang1,&Ang2,&Ang3,&Seq,junk,&newline);
             A2C(Seq,Ang1*D2R,Ang2*D2R,Ang3*D2R,Fgs->CB);
             C2Q(Fgs->CB,Fgs->qb);
-            ScanLine(infile,"%120s",1,response);
+            fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
             Fgs->BoreAxis = DecodeString(response);
             Fgs->H_Axis = (Fgs->BoreAxis+1)%3;
             Fgs->V_Axis = (Fgs->BoreAxis+2)%3;
-            ScanLine(infile,"%lf %lf",2,
-               &Fgs->FovHalfAng[0],&Fgs->FovHalfAng[1]);
+            fscanf(infile,"%lf %lf %[^\n] %[\n]",
+               &Fgs->FovHalfAng[0],&Fgs->FovHalfAng[1],junk,&newline);
             for(i=0;i<2;i++) {
                Fgs->FovHalfAng[i] *= 0.5*A2R;
             }
-            ScanLine(infile,"%lf",1,&Fgs->NEA);
+            fscanf(infile,"%lf %[^\n] %[\n]",&Fgs->NEA,junk,&newline);
             Fgs->NEA *= A2R;
-            ScanLine(infile,"%lf",1,&Fgs->Scl);
+            fscanf(infile,"%lf %[^\n] %[\n]",&Fgs->Scl,junk,&newline);
             Fgs->Scl *= A2R;
-            ScanLine(infile,"%ld",1,&Fgs->Body);
+            fscanf(infile,"%ld %[^\n] %[\n]",&Fgs->Body,junk,&newline);
             if (Fgs->Body >= S->Nb) {
                printf("SC[%ld].Fgs[%ld] Body out of range\n",S->ID,Ifgs);
                exit(1);
             } 
-            ScanLine(infile,"%ld",1,&Fgs->Node);
+            fscanf(infile,"%ld %[^\n] %[\n]",&Fgs->Node,junk,&newline);
             if (Fgs->Node >= S->B[Fgs->Body].NumNodes) {
                printf("SC[%ld].Fgs[%ld] Node out of range\n",S->ID,Ifgs);
                exit(1);
             } 
-            ScanLine(infile,"%lf %lf %lf %ld",4,&Ang1,&Ang2,&Ang3,&Seq);
+            fscanf(infile,"%lf %lf %lf %ld %[^\n] %[\n]",
+               &Ang1,&Ang2,&Ang3,&Seq,junk,&newline);
             A2C(Seq,Ang1*D2R,Ang2*D2R,Ang3*D2R,Fgs->CR);
             C2Q(Fgs->CR,Fgs->qr);
-            ScanLine(infile,"%lf %lf",2,&Ang1,&Ang2);
+            fscanf(infile,"%lf %lf  %[^\n] %[\n]",
+               &Ang1,&Ang2,junk,&newline);
             Fgs->Hr = Ang1*D2R;
             Fgs->Vr = Ang2*D2R;
-            ScanLine(infile,"%40s",1,Fgs->OpticsFileName);
-            ScanLine(infile,"%40s",1,Fgs->PsfFileName);
+            fscanf(infile,"%s %[^\n] %[\n]",Fgs->OpticsFileName,junk,&newline);
+            fscanf(infile,"%s %[^\n] %[\n]",Fgs->PsfFileName,junk,&newline);
             InitOptics(Fgs);
             if (strcmp(Fgs->PsfFileName,"NONE")) {
                PSF = &Fgs->PSF;
@@ -3015,15 +2873,15 @@ void InitSpacecraft(struct SCType *S)
 
 /* .. Load geometry */
       for(j=0;j<S->Nb;j++) {
-         OldNmesh = Nmesh;
-         Mesh = LoadWingsObjFile(ModelPath,S->B[j].MeshFileName,
-            &Matl,&Nmatl,Mesh,&Nmesh,&S->B[j].MeshTag,
+         OldNgeom = Ngeom;
+         Geom = LoadWingsObjFile(ModelPath,S->B[j].GeomFileName,
+            &Matl,&Nmatl,Geom,&Ngeom,&S->B[j].GeomTag,
             AeroShadowsActive || SolPressShadowsActive);
-         if (ContactActive && OldNmesh != Nmesh) LoadOctree(&Mesh[Nmesh-1]);
+         if (ContactActive && OldNgeom != Ngeom) LoadOctree(&Geom[Ngeom-1]);
       }
 
 /* .. Initialize Bounding Box */
-      memcpy(&S->BBox,&Mesh[S->B[0].MeshTag].BBox,sizeof(struct BoundingBoxType));
+      memcpy(&S->BBox,&Geom[S->B[0].GeomTag].BBox,sizeof(struct BoundingBoxType));
       UpdateScBoundingBox(S);
 
       S->EnvTrq.First = 1;
@@ -3061,17 +2919,18 @@ void InitSpacecraft(struct SCType *S)
 void LoadTdrs(void)
 {
       FILE *infile;
-      char response[121];
+      char junk[120],newline;
+      char response[120];
       long i;
 
 /* .. Initialize TDRS */
       infile = FileOpen(InOutPath,"Inp_TDRS.txt","r");
 /* .. 42 TDRS Configuration File */
-      ScanLine(infile,"",0,NULL);
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
 
       for(i=0;i<10;i++) {
-         ScanLine(infile,"%120s \"%40[^\"]\"",2,
-            response,Tdrs[i].Designation);
+         fscanf(infile,"%s \"%[^\"]\" %[^\n] %[\n]",response,
+            Tdrs[i].Designation,junk,&newline);
          Tdrs[i].Exists = DecodeString(response);
       }
 
@@ -3136,7 +2995,7 @@ void LoadSun(void)
       W->HasRing = FALSE;
       strcpy(W->Name,"Sun");
       strcpy(W->MapFileName,"NONE");
-      strcpy(W->MeshFileName,"NONE");
+      strcpy(W->GeomFileName,"NONE");
       strcpy(W->ColTexFileName,"NONE");
       strcpy(W->BumpTexFileName,"NONE");
       for(j=0;j<3;j++) {
@@ -3170,7 +3029,7 @@ void LoadPlanets(void)
                                 "Pluto"};
       char MapFileName[10][20] = {"NONE","Rockball","Venus.ppm","Earth.ppm","Mars.ppm",
          "Jupiter.ppm","Saturn.ppm","Uranus.ppm","Neptune.ppm","Iceball"};
-      double Mu[10] = {1.32715E20,2.18E13,3.2485E14,3.986004418E14,
+      double Mu[10] = {1.32715E20,2.18E13,3.2485E14,3.986004E14,
                        4.293E13,1.2761E17,3.792E16,5.788E15,6.8E15,
                        3.2E14};
       double J2[10] = {0.0,0.0,0.0,1.08263E-3,1.96045E-3,0.0,0.0,0.0,0.0,0.0};
@@ -3268,7 +3127,7 @@ void LoadPlanets(void)
       World[EARTH].Atmo.RayScat[1] = 13.5E-6;
       World[EARTH].Atmo.RayScat[2] = 33.1E-6;
       World[EARTH].Atmo.RayScaleHt = 8000.0;
-      World[EARTH].Atmo.MieScat = 2.0E-5;
+      World[EARTH].Atmo.MieScat = 4.0E-6;
       World[EARTH].Atmo.MieScaleHt = 1200.0;
       World[EARTH].Atmo.MieG = 0.76;
       World[EARTH].Atmo.MaxHt = 8.0*World[EARTH].Atmo.RayScaleHt;
@@ -3361,7 +3220,6 @@ void LoadMoonOfEarth(void)
 {
 #define Nm 1
 
-      double Zaxis[3] = {0.0,0.0,1.0};
       char Name[Nm][40] = {"Luna"};
       char MapFileName[Nm][40] = {"Luna.ppm"};
       float Color[4] = {0.440417f, 0.441343f, 0.441084f,1.0f};
@@ -3446,8 +3304,6 @@ void LoadMoonOfEarth(void)
          C2Q(M->CNH,M->qnh);
          QxQT(M->qnh,qjh,M->qnj);
          M->PriMerAng = LunaPriMerAng(TT.JulDay);
-         SimpRot(Zaxis,M->PriMerAng,M->CWN);
-         C2Q(M->CWN,M->qwn);
          M->Type = MOON;
       }
 #undef Nm
@@ -3537,9 +3393,9 @@ void LoadMoonsOfMars(void)
          for(i=0;i<4;i++) M->Color[i] = 1.0;
          M->Type = MOON;
       }
-      strcpy(World[PHOBOS].MeshFileName,"Phobos.obj");
-      Mesh = LoadWingsObjFile(ModelPath,World[PHOBOS].MeshFileName,
-         &Matl,&Nmatl,Mesh,&Nmesh,&World[PHOBOS].MeshTag,FALSE);
+      strcpy(World[PHOBOS].GeomFileName,"Phobos.obj");
+      Geom = LoadWingsObjFile(ModelPath,World[PHOBOS].GeomFileName,
+         &Matl,&Nmatl,Geom,&Ngeom,&World[PHOBOS].GeomTag,FALSE);
 
 
 #undef Nm
@@ -4033,15 +3889,15 @@ void LoadMinorBodies(void)
       FILE *infile;
       struct WorldType *W;
       struct OrbitType *E;
-      char response[121];
+      char junk[120],newline,response[120];
       long Ib,i;
       long EpochYear,EpochMon,EpochDay,EpochHour;
       double CNJ[3][3],PoleRA,PoleDec,Epoch;
       double ZAxis[3] = {0.0,0.0,1.0};
 
       infile = FileOpen(ModelPath,"MinorBodies.txt","r");
-      ScanLine(infile,"",0,NULL);
-      ScanLine(infile,"%ld",1,&Nmb);
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      fscanf(infile,"%ld %[^\n] %[\n]",&Nmb,junk,&newline);
       if (Nmb > 10) {
          printf("Only 10 minor bodies are supported.  Adjust NWORLD to suit.\n");
          exit(1);
@@ -4049,20 +3905,20 @@ void LoadMinorBodies(void)
       for(Ib=0;Ib<Nmb;Ib++) {
          W = &World[55+Ib];
          E = &W->eph;
-         ScanLine(infile,"",0,NULL);
-         ScanLine(infile,"%120s",1,response);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+         fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
          W->Exists=DecodeString(response);
-         ScanLine(infile,"\"%40[^\"]\"",1,W->Name);
-         ScanLine(infile,"%120s",1,response);
+         fscanf(infile,"\"%[^\"]\" %[^\n] %[\n]",W->Name,junk,&newline);
+         fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
          W->Type=DecodeString(response);
-         ScanLine(infile,"%40s",1,W->MapFileName);
-         ScanLine(infile,"%40s",1,W->MeshFileName);
-         ScanLine(infile,"%40s",1,W->ColTexFileName);
-         ScanLine(infile,"%40s",1,W->BumpTexFileName);
-         ScanLine(infile,"%lf",1,&W->mu);
-         ScanLine(infile,"%lf",1,&W->rad);
-         ScanLine(infile,"%lf",1,&W->w);
-         ScanLine(infile,"%lf %lf",2,&PoleRA,&PoleDec);
+         fscanf(infile,"%s %[^\n] %[\n]",W->MapFileName,junk,&newline);
+         fscanf(infile,"%s %[^\n] %[\n]",W->GeomFileName,junk,&newline);
+         fscanf(infile,"%s %[^\n] %[\n]",W->ColTexFileName,junk,&newline);
+         fscanf(infile,"%s %[^\n] %[\n]",W->BumpTexFileName,junk,&newline);
+         fscanf(infile,"%lf %[^\n] %[\n]",&W->mu,junk,&newline);
+         fscanf(infile,"%lf %[^\n] %[\n]",&W->rad,junk,&newline);
+         fscanf(infile,"%lf %[^\n] %[\n]",&W->w,junk,&newline);
+         fscanf(infile,"%lf %lf %[^\n] %[\n]",&PoleRA,&PoleDec,junk,&newline);
          A2C(312,(PoleRA+90.0)*D2R,(90.0-PoleDec)*D2R,0.0,CNJ);
          MxM(CNJ,World[EARTH].CNH,W->CNH);
          C2Q(W->CNH,W->qnh);
@@ -4071,14 +3927,14 @@ void LoadMinorBodies(void)
          E->Regime = ORB_CENTRAL;
          E->World = SOL;
          E->mu = World[SOL].mu;
-         ScanLine(infile,"%lf",1,&E->SMA);
-         ScanLine(infile,"%lf",1,&E->ecc);
-         ScanLine(infile,"%lf",1,&E->inc);
-         ScanLine(infile,"%lf",1,&E->RAAN);
-         ScanLine(infile,"%lf",1,&E->ArgP);
-         ScanLine(infile,"%ld %ld %ld %ld",4,
-            &EpochYear,&EpochMon,&EpochDay,&EpochHour);
-         ScanLine(infile,"%lf",1,&E->anom);
+         fscanf(infile,"%lf %[^\n] %[\n]",&E->SMA,junk,&newline);
+         fscanf(infile,"%lf %[^\n] %[\n]",&E->ecc,junk,&newline);
+         fscanf(infile,"%lf %[^\n] %[\n]",&E->inc,junk,&newline);
+         fscanf(infile,"%lf %[^\n] %[\n]",&E->RAAN,junk,&newline);
+         fscanf(infile,"%lf %[^\n] %[\n]",&E->ArgP,junk,&newline);
+         fscanf(infile,"%ld %ld %ld %ld %[^\n] %[\n]",
+            &EpochYear,&EpochMon,&EpochDay,&EpochHour,junk,&newline);
+         fscanf(infile,"%lf %[^\n] %[\n]",&E->anom,junk,&newline);
          Epoch = DateToTime(EpochYear,EpochMon,EpochDay,EpochHour,0,0.0);
          E->MeanMotion = sqrt(E->mu/(E->SMA*E->SMA*E->SMA));
          E->Period = TwoPi/E->MeanMotion;
@@ -4089,9 +3945,9 @@ void LoadMinorBodies(void)
          while ((E->tp-DynTime0) < -E->Period) E->tp += E->Period;
          while ((E->tp-DynTime0) >  E->Period) E->tp -= E->Period;
 
-         Mesh = LoadWingsObjFile(ModelPath,W->MeshFileName,
-            &Matl,&Nmatl,Mesh,&Nmesh,&W->MeshTag,TRUE);
-         W->Density = W->mu/(6.67408E-11*PolyhedronVolume(&Mesh[W->MeshTag]));
+         Geom = LoadWingsObjFile(ModelPath,W->GeomFileName,
+            &Matl,&Nmatl,Geom,&Ngeom,&W->GeomTag,TRUE);
+         W->Density = W->mu/(6.67408E-11*PolyhedronVolume(&Geom[W->GeomTag]));
 
          W->Parent = SOL;
          W->Nsat = 0;
@@ -4121,34 +3977,34 @@ void LoadRegions(void)
 {
       FILE *infile;
       long Ir;
-      char Exists[21],WorldID[41],IsPosW[121];
+      char Exists[20],WorldID[20],IsPosW[120],junk[120],newline;
       struct WorldType *W;
       struct RegionType *R;
       double MagR;
-      double VelW[3];
 
       infile = FileOpen(InOutPath,"Inp_Region.txt","rt");
 
-      ScanLine(infile,"",0,NULL);
-      ScanLine(infile,"%ld",1,&Nrgn);
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      fscanf(infile,"%ld %[^\n] %[\n]",&Nrgn,junk,&newline);
       Rgn = (struct RegionType *) calloc(Nrgn,sizeof(struct RegionType));
       for(Ir=0;Ir<Nrgn;Ir++) {
          R = &Rgn[Ir];
-         ScanLine(infile,"",0,NULL);
-         ScanLine(infile,"%20s",1,Exists);
+         fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+         fscanf(infile,"%s %[^\n] %[\n]",Exists,junk,&newline);
          R->Exists = DecodeString(Exists);
-         ScanLine(infile,"\"%40[^\"]\"",1,R->Name);
-         ScanLine(infile,"%40s",1,WorldID);
+         fscanf(infile,"\"%[^\"]\" %[^\n] %[\n]",
+            R->Name,junk,&newline);
+         fscanf(infile,"%s %[^\n] %[\n]",WorldID,junk,&newline);
          R->World = DecodeString(WorldID);
          if (R->World<0 || R->World > NWORLD) {
             printf("Region's World is out of range in LoadRegions.  Bailing out.\n");
             exit(1);
          }
          W = &World[R->World];
-         ScanLine(infile,"%120s",1,IsPosW);
+         fscanf(infile,"%s %[^\n] %[\n]",IsPosW,junk,&newline);
          if (DecodeString(IsPosW)) {
-            ScanLine(infile,"%lf %lf %lf",3,
-               &R->PosW[0],&R->PosW[1],&R->PosW[2]);
+            fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+               &R->PosW[0],&R->PosW[1],&R->PosW[2],junk,&newline);
             R->Lng = atan2(R->PosW[1],R->PosW[0]);
             MagR = MAGV(R->PosW);
             R->Lat = asin(R->PosW[2]/MagR);
@@ -4157,11 +4013,12 @@ void LoadRegions(void)
             /* for(i=0;i<3;i++) R->CRW[i][i] = 1.0; */
             MTxV(W->CWN,R->PosW,R->PosN);
             MxM(R->CW,W->CWN,R->CN);
-            ScanLine(infile,"",0,NULL);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
          }
          else {
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%lf %lf %lf",3,&R->Lng,&R->Lat,&R->Alt);
+            fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+            fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+               &R->Lng,&R->Lat,&R->Alt,junk,&newline);
             R->Lng *= D2R;
             R->Lat *= D2R;
             MagR = W->rad+R->Alt;
@@ -4172,18 +4029,17 @@ void LoadRegions(void)
             MTxV(W->CWN,R->PosW,R->PosN);
             MxM(R->CW,W->CWN,R->CN);
          }
-         VelW[0] = -W->w*R->PosW[1];
-         VelW[1] =  W->w*R->PosW[0];
-         VelW[2] = 0.0;
-         MTxV(W->CWN,VelW,R->VelN);         
+         R->VelN[0] = -W->w*R->PosN[1];
+         R->VelN[1] = W->w*R->PosN[0];
+         R->VelN[2] = 0.0;
          R->wn[0] = 0.0;
          R->wn[1] = W->w*cos(R->Lat);
          R->wn[2] = W->w*sin(R->Lat);
-         ScanLine(infile,"%lf %lf %lf",3,
-            &R->ElastCoef,&R->DampCoef,&R->FricCoef);
-         ScanLine(infile,"%40s",1,R->MeshFileName);
-         Mesh = LoadWingsObjFile(ModelPath,R->MeshFileName,
-            &Matl,&Nmatl,Mesh,&Nmesh,&R->MeshTag,TRUE);
+         fscanf(infile,"%lf %lf %lf %[^\n] %[\n]",
+            &R->ElastCoef,&R->DampCoef,&R->FricCoef,junk,&newline);
+         fscanf(infile,"%s %[^\n] %[\n]",R->GeomFileName,junk,&newline);
+         Geom = LoadWingsObjFile(ModelPath,R->GeomFileName,
+            &Matl,&Nmatl,Geom,&Ngeom,&R->GeomTag,TRUE);
       }
       fclose(infile);
 }
@@ -4594,7 +4450,7 @@ long LoadJplEphems(char EphemPath[80],double JD)
 void LoadConstellations(void) {
 
       FILE *infile;
-      char response[121];
+      char junk[120],newline,response[120];
       double RA,Dec;
       long i,j;
       struct ConstellationType *C;
@@ -4603,7 +4459,7 @@ void LoadConstellations(void) {
 
       for (i=0;i<89;i++) {
          C = &Constell[i];
-         ScanLine(infile,"%4s %120s %ld %ld",4,C->Tag,response,&C->Nstars,&C->Nlines);
+         fscanf(infile,"%s %s %ld %ld\n",C->Tag,response,&C->Nstars,&C->Nlines);
          C->Class = DecodeString(response);
 
          C->StarVec = CreateMatrix(C->Nstars,3);
@@ -4612,7 +4468,7 @@ void LoadConstellations(void) {
          C->Star2 = (long *) calloc(C->Nlines,sizeof(long));
          
          for (j=0; j<C->Nstars; j++) {
-            ScanLine(infile,"%lf %lf",2,&RA,&Dec);
+            fscanf(infile,"%lf %lf %[^\n] %[\n]",&RA,&Dec,junk,&newline);
             RA *= D2R;
             Dec *= D2R;
             C->StarVec[j][0] = cos(RA)*cos(Dec);
@@ -4621,7 +4477,7 @@ void LoadConstellations(void) {
          }
 
          for (j=0; j<C->Nlines; j++) {
-            ScanLine(infile,"%ld %ld",2,&C->Star1[j],&C->Star2[j]);                  
+            fscanf(infile,"%ld %ld %[^\n] %[\n]",&C->Star1[j],&C->Star2[j],junk,&newline);                  
          }
       }
       
@@ -4631,17 +4487,18 @@ void LoadConstellations(void) {
 void LoadSchatten(void)
 {
       FILE *infile;
+      char junk[120],newline;
       long i,fileyear,filemonth;
       
       infile = FileOpen(ModelPath,"SolFlx0908_Schatten.txt","rt");
 
-      ScanLine(infile,"",0,NULL);
-      ScanLine(infile,"",0,NULL);
-      for(i=0;i<409;i++) {
-         ScanLine(infile,"%ld %ld %lf %lf %lf %lf",6,
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      for(i=0;i<410;i++) {
+         fscanf(infile,"%ld %ld %lf %lf %lf %lf,%[^\n] %[\n]",
             &fileyear,&filemonth,
             &SchattenTable[1][i],&SchattenTable[2][i],
-            &SchattenTable[3][i],&SchattenTable[4][i]);
+            &SchattenTable[3][i],&SchattenTable[4][i],junk,&newline);
          SchattenTable[0][i] = DateToJD(fileyear,filemonth,01,12,00,00);
       }
       fclose(infile);
@@ -4651,7 +4508,8 @@ void InitSim(int argc, char **argv)
 {
       FILE *infile;
       struct OrbitType *Eph;
-      char response[121],response1[121],response2[121];
+      char junk[120],newline;
+      char response[120],response1[120],response2[120];
       double r1[3],rh[3],vh[3];
       double Zaxis[3] = {0.0,0.0,1.0};
       long Iorb,Isc,i,j,Ip,Im,Iw,Nm;
@@ -4679,34 +4537,41 @@ void InitSim(int argc, char **argv)
       qjh[2] = 0.0;
       qjh[3] = 0.979153221449;
       
-      sprintf(InOutPath,"InOut/");
-      sprintf(ModelPath,"Model/");
-      if (argc > 1) sprintf(InOutPath,"%s/",argv[1]);
-      if (argc > 2) sprintf(ModelPath,"%s/",argv[2]);
+      #ifdef _ENABLE_RBT_
+         sprintf(InOutPath,"../../GSFC/RBT/InOut/");
+         sprintf(ModelPath,"../../GSFC/RBT/Model/");
+         if (argc > 1) sprintf(InOutPath,"../../GSFC/RBT/%s/",argv[1]);
+         if (argc > 2) sprintf(ModelPath,"../../GSFC/RBT/%s/",argv[2]);
+      #else
+         sprintf(InOutPath,"./InOut/");
+         sprintf(ModelPath,"./Model/");
+         if (argc > 1) sprintf(InOutPath,"./%s/",argv[1]);
+         if (argc > 2) sprintf(ModelPath,"./%s/",argv[2]);
+      #endif
 
 /* .. Read from file Inp_Sim.txt */
       infile=FileOpen(InOutPath,"Inp_Sim.txt","r");
 
-      ScanLine(infile,"",0,NULL);
-      ScanLine(infile,"",0,NULL);
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
 /* .. Time Mode */
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
       TimeMode = DecodeString(response);
 /* .. Duration, Step size */
-      ScanLine(infile,"%lf %lf",2,&STOPTIME,&DTSIM);
+      fscanf(infile,"%lf %lf %[^\n] %[\n]",&STOPTIME,&DTSIM,junk,&newline);
 /* .. File output interval */
-      ScanLine(infile,"%lf",1,&DTOUT);
+      fscanf(infile,"%lf %[^\n] %[\n]",&DTOUT,junk,&newline);
 /* .. RNG Seed */
-      ScanLine(infile,"%ld",1,&RngSeed);
+      fscanf(infile,"%ld %[^\n] %[\n]",&RngSeed,junk,&newline);
 /* .. Graphics Front End? */
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
       GLEnable = DecodeString(response);
 /* .. Cmd Script File Name */
-      ScanLine(infile,"%80s",1,CmdFileName);
+      fscanf(infile,"%s %[^\n] %[\n]",CmdFileName,junk,&newline);
 
 /* .. Reference Orbits */
-      ScanLine(infile,"",0,NULL);
-      ScanLine(infile,"%ld",1,&Norb);
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      fscanf(infile,"%ld %[^\n] %[\n]",&Norb,junk,&newline);
       Orb = NULL;
       Orb = (struct OrbitType *) calloc(Norb,sizeof(struct OrbitType));
       if (Orb == NULL) {
@@ -4720,14 +4585,15 @@ void InitSim(int argc, char **argv)
          exit(1);
       }
       for(Iorb=0;Iorb<Norb;Iorb++){
-         ScanLine(infile,"%120s %120s",2,response,Orb[Iorb].FileName);
+         fscanf(infile,"%s %s %[^\n] %[\n]",response,Orb[Iorb].FileName,
+                junk,&newline);
          Orb[Iorb].Exists = DecodeString(response);
          Orb[Iorb].Tag = Iorb;
       }
 
 /* .. Spacecraft */
-      ScanLine(infile,"",0,NULL);
-      ScanLine(infile,"%ld",1,&Nsc);
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      fscanf(infile,"%ld %[^\n] %[\n]",&Nsc,junk,&newline);
       SC = NULL;
       SC = (struct SCType *) calloc(Nsc,sizeof(struct SCType));
       if (SC == NULL) {
@@ -4735,8 +4601,8 @@ void InitSim(int argc, char **argv)
          exit(1);
       }
       for(Isc=0;Isc<Nsc;Isc++){
-         ScanLine(infile,"%120s  %ld %40s",3,response,
-            &SC[Isc].RefOrb,SC[Isc].FileName);
+         fscanf(infile,"%s  %ld %s %[^\n] %[\n]",response,
+            &SC[Isc].RefOrb,SC[Isc].FileName,junk,&newline);
          SC[Isc].Exists=DecodeString(response);
          SC[Isc].ID = Isc;
          if ((SC[Isc].Exists && !Orb[SC[Isc].RefOrb].Exists) || (SC[Isc].RefOrb > Norb)) {
@@ -4746,78 +4612,81 @@ void InitSim(int argc, char **argv)
          }
       }
 /* .. Environment */
-      ScanLine(infile,"",0,NULL);
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
 /* .. Date and time (UTC) */
-      ScanLine(infile,"%ld %ld %ld",3,&UTC.Month,&UTC.Day,&UTC.Year);
-      ScanLine(infile,"%ld %ld %lf",3,&UTC.Hour,&UTC.Minute,&UTC.Second);
-      ScanLine(infile,"%lf",1,&LeapSec);
+      fscanf(infile,"%ld %ld %ld %[^\n] %[\n]",&UTC.Month,&UTC.Day,&UTC.Year,
+             junk,&newline);
+      fscanf(infile,"%ld %ld %lf %[^\n] %[\n]",&UTC.Hour,&UTC.Minute,&UTC.Second,
+             junk,&newline);
+      fscanf(infile,"%lf %[^\n] %[\n]",&LeapSec,junk,&newline);
 /* .. Choices for Modeling Solar Activity */
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%s  %[^\n] %[\n]",response,junk,&newline);
       AtmoOption=DecodeString(response);
-      ScanLine(infile,"%lf",1,&Flux10p7);
-      ScanLine(infile,"%lf",1,&GeomagIndex);
+      fscanf(infile,"%lf %[^\n] %[\n]",&Flux10p7,junk,&newline);
+      fscanf(infile,"%lf %[^\n] %[\n]",&GeomagIndex,junk,&newline);
 /* .. Magnetic Field Model */
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
          MagModel.Type = DecodeString(response);
-      ScanLine(infile,"%ld %ld",2,&MagModel.N,&MagModel.M);
+      fscanf(infile,"%ld %ld %[^\n] %[\n]",&MagModel.N,&MagModel.M,
+             junk,&newline);
 /* .. Earth Gravity Model */
-      ScanLine(infile,"%ld %ld",2,
-         &EarthGravModel.N,&EarthGravModel.M);
+      fscanf(infile,"%ld %ld %[^\n] %[\n]",&EarthGravModel.N,
+             &EarthGravModel.M,junk,&newline);
 /* .. Mars Gravity Model */
-      ScanLine(infile,"%ld %ld",2,
-         &MarsGravModel.N,&MarsGravModel.M);
+      fscanf(infile,"%ld %ld %[^\n] %[\n]",&MarsGravModel.N,
+             &MarsGravModel.M,junk,&newline);
 /* .. Luna Gravity Model */
-      ScanLine(infile,"%ld %ld",2,
-         &LunaGravModel.N,&LunaGravModel.M);
+      fscanf(infile,"%ld %ld %[^\n] %[\n]",&LunaGravModel.N,
+             &LunaGravModel.M,junk,&newline);
 /* .. Toggle on/off various environmental effects */
-      ScanLine(infile,"%120s  %120s",2,response1,response2);
+      fscanf(infile,"%s  %s %[^\n] %[\n]",response1,response2,junk,&newline);
       AeroActive=DecodeString(response1);
       AeroShadowsActive = DecodeString(response2);
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%s  %[^\n] %[\n]",response,junk,&newline);
       GGActive=DecodeString(response);
-      ScanLine(infile,"%120s %120s",2,response1,response2);
+      fscanf(infile,"%s %s %[^\n] %[\n]",response1,response2,junk,&newline);
       SolPressActive=DecodeString(response1);
       SolPressShadowsActive=DecodeString(response2);
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%s  %[^\n] %[\n]",response,junk,&newline);
       ResidualDipoleActive=DecodeString(response);
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%s  %[^\n] %[\n]",response,junk,&newline);
       GravPertActive=DecodeString(response);
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%s  %[^\n] %[\n]",response,junk,&newline);
       ThrusterPlumesActive=DecodeString(response);
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%s  %[^\n] %[\n]",response,junk,&newline);
       ContactActive=DecodeString(response);
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%s  %[^\n] %[\n]",response,junk,&newline);
       SloshActive=DecodeString(response);
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%s  %[^\n] %[\n]",response,junk,&newline);
       AlbedoActive=DecodeString(response);
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%s  %[^\n] %[\n]",response,junk,&newline);
       ComputeEnvTrq=DecodeString(response);
 /* .. Celestial Bodies */
-      ScanLine(infile,"",0,NULL);
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
       EphemOption = DecodeString(response);
       for(i=MERCURY;i<=PLUTO;i++){
-         ScanLine(infile,"%120s",1,response);
+         fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
          World[i].Exists=DecodeString(response);
       }
-      ScanLine(infile,"%120s",1,response);
+      fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
       MinorBodiesExist=DecodeString(response);
 
 /* .. Lagrange Point Systems */
-      ScanLine(infile,"",0,NULL);
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
       for(i=0;i<3;i++){
-         ScanLine(infile,"%120s",1,response);
+         fscanf(infile,"%s %[^\n] %[\n]",response,junk,&newline);
          LagSys[i].Exists=DecodeString(response);
       }
 
 /* .. Ground Stations */
-      ScanLine(infile,"",0,NULL);
-      ScanLine(infile,"%ld",1,&Ngnd);
+      fscanf(infile,"%[^\n] %[\n]",junk,&newline);
+      fscanf(infile,"%ld %[^\n] %[\n]",&Ngnd,junk,&newline);
       GroundStation = (struct GroundStationType *) calloc(Ngnd,sizeof(struct GroundStationType));
       for(i=0;i<Ngnd;i++) {
-         ScanLine(infile,"%120s %120s %lf %lf \"%40[^\"]\"",5,
+         fscanf(infile,"%s %s %lf %lf \"%[^\"]\" %[^\n] %[\n]",
             response1,response2,&GroundStation[i].lng,&GroundStation[i].lat,
-            GroundStation[i].Label);
+            GroundStation[i].Label,junk,&newline);
          GroundStation[i].Exists = DecodeString(response1);
          GroundStation[i].World = DecodeString(response2);
       }
@@ -4829,10 +4698,10 @@ void InitSim(int argc, char **argv)
       Matl = AddMtlLib(ModelPath,"42.mtl",Matl,&Nmatl);
       ScaleSpecDiffFrac(Matl,Nmatl);
 
-      /* Known bug: First Mesh loaded in gets corrupted.
-      Kludge fix: Load a sacrificial mesh first.  */
-      Mesh = LoadWingsObjFile(ModelPath,"Point.obj",
-            &Matl,&Nmatl,Mesh,&Nmesh,&JunkTag,FALSE);
+      /* Known bug: First Geom loaded in gets corrupted.
+      Kludge fix: Load a sacrificial geom first.  */
+      Geom = LoadWingsObjFile(ModelPath,"Point.obj",
+            &Matl,&Nmatl,Geom,&Ngeom,&JunkTag,FALSE);
 
 /* .. Time */
       if (TimeMode == EXTERNAL_TIME) {

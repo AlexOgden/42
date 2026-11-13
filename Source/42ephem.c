@@ -155,7 +155,6 @@ void CheckOrbitRectification(struct OrbitType *O)
 /*  or attitudes, several dynamical variables must be adjusted.       */
 void ChangeNFrame(struct OrbitType *O,long OldWorld, long NewWorld)
 {
-      struct POVType *POV;
       double CN1H[3][3],CN2H[3][3],CL1H[3][3],CL2H[3][3],CH[3][3],VH[3];
       double CBN1[3][3],CBN2[3][3];
       struct FormationType *F;
@@ -163,8 +162,6 @@ void ChangeNFrame(struct OrbitType *O,long OldWorld, long NewWorld)
       struct BodyType *B;
       struct DynType *D;
       long Isc,Ib,i,j;
-      
-      POV = &Eye;
 
       for(i=0;i<3;i++) {
          for(j=0;j<3;j++) {
@@ -235,34 +232,34 @@ void ChangeNFrame(struct OrbitType *O,long OldWorld, long NewWorld)
       }
 
 /* .. POV */
-      if (POV->Host.RefOrb == O->Tag) {
-         POV->Host.World = NewWorld;
-         MxM(POV->CN,CN1H,CH);
-         MxMT(CH,CN2H,POV->CN);
-         MxMT(POV->CN,SC[POV->Host.SC].CLN,POV->CL);
+      if (POV.Host.RefOrb == O->Tag) {
+         POV.Host.World = NewWorld;
+         MxM(POV.CN,CN1H,CH);
+         MxMT(CH,CN2H,POV.CN);
+         MxMT(POV.CN,SC[POV.Host.SC].CLN,POV.CL);
 
-         if (POV->Frame == FRAME_N) {
+         if (POV.Frame == FRAME_N) {
             for(i=0;i<3;i++) {
-               for(j=0;j<3;j++) POV->C[i][j] = POV->CN[i][j];
+               for(j=0;j<3;j++) POV.C[i][j] = POV.CN[i][j];
             }
          }
-         else if (POV->Frame == FRAME_L) {
+         else if (POV.Frame == FRAME_L) {
             for(i=0;i<3;i++) {
-               for(j=0;j<3;j++) POV->C[i][j] = POV->CL[i][j];
+               for(j=0;j<3;j++) POV.C[i][j] = POV.CL[i][j];
             }
          }
-         else if (POV->Frame == FRAME_F) {
+         else if (POV.Frame == FRAME_F) {
             /* Still needs work */
             for(i=0;i<3;i++) {
-               for(j=0;j<3;j++) POV->C[i][j] = POV->CF[i][j];
+               for(j=0;j<3;j++) POV.C[i][j] = POV.CF[i][j];
             }
          }
-         else if (POV->Frame == FRAME_S || POV->Frame == FRAME_B) {
+         else if (POV.Frame == FRAME_S || POV.Frame == FRAME_B) {
             for(i=0;i<3;i++) {
-               for(j=0;j<3;j++) POV->C[i][j] = POV->CB[i][j];
+               for(j=0;j<3;j++) POV.C[i][j] = POV.CB[i][j];
             }
          }
-         C2Q(POV->C,POV->q);
+         C2Q(POV.C,POV.q);
       }
 }
 /**********************************************************************/
@@ -394,12 +391,12 @@ void CheckChangeOfOrbitWorld(struct OrbitType *O)
 /**********************************************************************/
 void SplineToPosVel(struct OrbitType *O)
 {
-      long NodeYear,NodeDOY,NodeMonth,NodeDay,NodeHour,NodeMin;
+      long NodeYear,NodeMonth,NodeDay,NodeHour,NodeMin;
       double NodeSec;
+      char newline;
       long i,j,k;
       double X[4],Y[4];
       double x[3],v[3],xn[3],vn[3];
-      char sep;
 
 /* .. Get nodes from O->SplineFile */
       while(DynTime > O->NodeDynTime[2]) {
@@ -410,28 +407,18 @@ void SplineToPosVel(struct OrbitType *O)
                O->NodeVel[i][j] = O->NodeVel[i+1][j];
             }
          }
-         if (O->SplineDateFormat == DATE_MON_DAY) {
-            ScanLine(O->SplineFile,O->SplineFmt,15,
-               &NodeYear,&sep,&NodeMonth,&sep,&NodeDay,&sep,
-               &NodeHour,&NodeMin,&NodeSec,
-               &O->NodePos[3][0],&O->NodePos[3][1],&O->NodePos[3][2],
-               &O->NodeVel[3][0],&O->NodeVel[3][1],&O->NodeVel[3][2]);
-         }
-         else {
-            ScanLine(O->SplineFile,O->SplineFmt,13,
-               &NodeYear,&sep,&NodeDOY,&sep,
-               &NodeHour,&NodeMin,&NodeSec,
-               &O->NodePos[3][0],&O->NodePos[3][1],&O->NodePos[3][2],
-               &O->NodeVel[3][0],&O->NodeVel[3][1],&O->NodeVel[3][2]);
-            DOY2MD(NodeYear,NodeDOY,&NodeMonth,&NodeDay);
-         }
-         O->NodeDynTime[3] = DateToTime(NodeYear,NodeMonth,NodeDay,
-            NodeHour,NodeMin,NodeSec);
-         O->NodeDynTime[3] += DynTime-CivilTime; /* Adjust from UTC to TT */
-         for(j=0;j<3;j++) {
-            O->NodePos[3][j] *= 1000.0;
-            O->NodeVel[3][j] *= 1000.0;
-         }
+         fscanf(O->SplineFile," %ld:%ld:%ld:%ld:%ld:%lf %lf %lf %lf %lf %lf %lf %[\n]",
+                  &NodeYear,&NodeMonth,&NodeDay,&NodeHour,&NodeMin,&NodeSec,
+                  &O->NodePos[3][0],&O->NodePos[3][1],&O->NodePos[3][2],
+                  &O->NodeVel[3][0],&O->NodeVel[3][1],&O->NodeVel[3][2],
+                  &newline);
+               O->NodeDynTime[3] = DateToTime(NodeYear,NodeMonth,NodeDay,
+                  NodeHour,NodeMin,NodeSec);
+               O->NodeDynTime[3] += DynTime-CivilTime; /* Adjust from UTC to TT */
+               for(j=0;j<3;j++) {
+                  O->NodePos[3][j] *= 1000.0;
+                  O->NodeVel[3][j] *= 1000.0;
+               }
          if (feof(O->SplineFile)) {
             printf("Oops.  Reached end of Spline file.\n");
             exit(1);

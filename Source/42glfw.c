@@ -27,20 +27,20 @@
 */
 
 /*********************************************************************/
-void SetupViewVolume(GLFWwindow *Window,struct POVType *POV)
+void SetupViewVolume(int width, int height)
 {
-      glfwSetWindowSize(Window,POV->PixWidth,POV->PixHeight);
+      glfwSetWindowSize(CamWindow,width,height);
 
-      POV->AR = ((double) POV->PixWidth)/((double) POV->PixHeight);
-      POV->AngHeight = POV->Near*tan(0.5*POV->Angle*D2R);
-      POV->AngWidth = POV->AR*POV->AngHeight;
+      POV.AR = ((double) width)/((double) height);
+      POV.Height = POV.Near*tan(0.5*POV.Angle*D2R);
+      POV.Width = POV.AR*POV.Height;
       glMatrixMode(GL_PROJECTION);
       glLoadIdentity();
-      gluPerspective(POV->Angle, POV->AR, POV->Near, POV->Far);
+      gluPerspective(POV.Angle, POV.AR, POV.Near, POV.Far);
       glMatrixMode(GL_MODELVIEW);
-      POV->CosFov = cos(1.2*sqrt(POV->AngWidth*POV->AngWidth+
-                        POV->AngHeight*POV->AngHeight));
-      POV->SinFov = sqrt(1.0-POV->CosFov*POV->CosFov);
+      POV.CosFov = cos(1.2*sqrt(POV.Width*POV.Width+
+                        POV.Height*POV.Height));
+      POV.SinFov = sqrt(1.0-POV.CosFov*POV.CosFov);
 }
 /*********************************************************************/
 void MainLoop(void)
@@ -73,9 +73,9 @@ void MainLoop(void)
             glfwMakeContextCurrent(NULL);
           }
          else {
-            Eye.w[0] = 0.0;
-            Eye.w[1] = 0.0;
-            Eye.w[2] = 0.0;
+            POV.w[0] = 0.0;
+            POV.w[1] = 0.0;
+            POV.w[2] = 0.0;
             Done = SimStep();
             if (GLOutFlag) {
                glfwMakeContextCurrent(CamWindow);
@@ -101,7 +101,7 @@ void MainLoop(void)
                   sprintf(CamFileName,"CamFrame%05ld.ppm",CamFrame);
                   glfwMakeContextCurrent(CamWindow);
                   CaptureScreenToPpm("./Screenshots/",
-                     CamFileName,Eye.PixHeight,Eye.PixWidth);
+                     CamFileName,CamHeight,CamWidth);
                   printf("Captured Cam Frame %ld\n",CamFrame);
                   if (CamFrame > MaxCamFrame) CamFrame = 0;
                }
@@ -122,6 +122,7 @@ void GlfwErrorHandler(int error, const char* description)
 void KeyHandler(GLFWwindow *Window, int key, int scancode,
    int action, int mods)
 {
+
       static long Refresh = FALSE;
 
       if (action == GLFW_PRESS) {
@@ -154,14 +155,14 @@ void KeyHandler(GLFWwindow *Window, int key, int scancode,
             case GLFW_KEY_DOWN :
                break;
             case GLFW_KEY_LEFT :
-               Eye.Angle *= 0.625;
-               if (Eye.Angle < 1.0) Eye.Angle = 1.0;
-               SetupViewVolume(CamWindow,&Eye);
+               POV.Angle *= 0.625;
+               if (POV.Angle < 1.0) POV.Angle = 1.0;
+               SetupViewVolume(CamWidth,CamHeight);
                break;
             case GLFW_KEY_RIGHT :
-               Eye.Angle *= 1.6;
-               if (Eye.Angle > 60.0) Eye.Angle = 60.0;
-               SetupViewVolume(CamWindow,&Eye);
+               POV.Angle *= 1.6;
+               if (POV.Angle > 60.0) POV.Angle = 60.0;
+               SetupViewVolume(CamWidth,CamHeight);
                break;
             case GLFW_KEY_PAGE_UP :
                break;
@@ -176,7 +177,7 @@ void KeyHandler(GLFWwindow *Window, int key, int scancode,
             case GLFW_KEY_F1 :
                glfwMakeContextCurrent(CamWindow);
                CaptureScreenToPpm("./Screenshots/",
-                  "CamSnap.ppm",Eye.PixHeight,Eye.PixWidth);
+                  "CamSnap.ppm",CamHeight,CamWidth);
                break;
             case GLFW_KEY_F2 :
                if (MapWindowExists) {
@@ -189,7 +190,7 @@ void KeyHandler(GLFWwindow *Window, int key, int scancode,
 
          if (Refresh) {
             Refresh = FALSE;
-            SetPovOrientation(&Eye);
+            SetPovOrientation();
          }
       }
 }
@@ -220,13 +221,13 @@ void CamMouseButtonHandler(GLFWwindow *Window, int Button, int Action, int Mods)
                if (Pick < 3) {
                   for(i=0;i<3;i++) PovWidget.Spot[i].Selected = 0;
                   PovWidget.Spot[Pick].Selected = 1;
-                  Eye.Mode = TRACK_HOST+Pick;
+                  POV.Mode = TRACK_HOST+Pick;
                   Refresh = TRUE;
                }
                else if (Pick < 8) {
                   for(i=0;i<5;i++) PovWidget.Spot[3+i].Selected = 0;
                   PovWidget.Spot[Pick].Selected = 1;
-                  Eye.Frame = FRAME_N+(Pick-3);
+                  POV.Frame = FRAME_N+(Pick-3);
                   Refresh = TRUE;
                }
                else if (Pick < 11) {
@@ -234,76 +235,76 @@ void CamMouseButtonHandler(GLFWwindow *Window, int Button, int Action, int Mods)
                   if (Pick == 8) {
                      PovWidget.Spot[8].Selected = 1;
                      PovWidget.Spot[13].Selected = 1;
-                     if (Eye.BoreAxis == POS_X) {
-                        Eye.BoreAxis = NEG_X;
-                        Eye.UpAxis = NEG_Z;
+                     if (POV.BoreAxis == POS_X) {
+                        POV.BoreAxis = NEG_X;
+                        POV.UpAxis = NEG_Z;
                      }
                      else {
-                        Eye.BoreAxis = POS_X;
-                        Eye.UpAxis = POS_Z;
+                        POV.BoreAxis = POS_X;
+                        POV.UpAxis = POS_Z;
                      }
                      Refresh = TRUE;
                   }
                   else if (Pick == 9) {
                      PovWidget.Spot[9].Selected = 1;
                      PovWidget.Spot[11].Selected = 1;
-                     if (Eye.BoreAxis == POS_Y) {
-                        Eye.BoreAxis = NEG_Y;
-                        Eye.UpAxis = NEG_X;
+                     if (POV.BoreAxis == POS_Y) {
+                        POV.BoreAxis = NEG_Y;
+                        POV.UpAxis = NEG_X;
                      }
                      else {
-                        Eye.BoreAxis = POS_Y;
-                        Eye.UpAxis = POS_X;
+                        POV.BoreAxis = POS_Y;
+                        POV.UpAxis = POS_X;
                      }
                      Refresh = TRUE;
                   }
                   else if (Pick == 10) {
                      PovWidget.Spot[10].Selected = 1;
                      PovWidget.Spot[12].Selected = 1;
-                     if (Eye.BoreAxis == POS_Z) {
-                        Eye.BoreAxis = NEG_Z;
-                        Eye.UpAxis = NEG_Y;
+                     if (POV.BoreAxis == POS_Z) {
+                        POV.BoreAxis = NEG_Z;
+                        POV.UpAxis = NEG_Y;
                      }
                      else {
-                        Eye.BoreAxis = POS_Z;
-                        Eye.UpAxis = POS_Y;
+                        POV.BoreAxis = POS_Z;
+                        POV.UpAxis = POS_Y;
                      }
                      Refresh = TRUE;
                   }
                }
                else if (Pick == 11) {
-                  if (Eye.BoreAxis != POS_X && Eye.BoreAxis != NEG_X) {
+                  if (POV.BoreAxis != POS_X && POV.BoreAxis != NEG_X) {
                      PovWidget.Spot[11].Selected = 1;
                      PovWidget.Spot[12].Selected = 0;
                      PovWidget.Spot[13].Selected = 0;
-                     if (Eye.UpAxis == POS_X)
-                        Eye.UpAxis = NEG_X;
+                     if (POV.UpAxis == POS_X)
+                        POV.UpAxis = NEG_X;
                      else
-                        Eye.UpAxis = POS_X;
+                        POV.UpAxis = POS_X;
                      Refresh = TRUE;
                   }
                }
                else if (Pick == 12) {
-                  if (Eye.BoreAxis != POS_Y && Eye.BoreAxis != NEG_Y) {
+                  if (POV.BoreAxis != POS_Y && POV.BoreAxis != NEG_Y) {
                      PovWidget.Spot[11].Selected = 0;
                      PovWidget.Spot[12].Selected = 1;
                      PovWidget.Spot[13].Selected = 0;
-                     if (Eye.UpAxis == POS_Y)
-                        Eye.UpAxis = NEG_Y;
+                     if (POV.UpAxis == POS_Y)
+                        POV.UpAxis = NEG_Y;
                      else
-                        Eye.UpAxis = POS_Y;
+                        POV.UpAxis = POS_Y;
                      Refresh = TRUE;
                   }
                }
                else if (Pick == 13) {
-                  if (Eye.BoreAxis != POS_Z && Eye.BoreAxis != NEG_Z) {
+                  if (POV.BoreAxis != POS_Z && POV.BoreAxis != NEG_Z) {
                      PovWidget.Spot[11].Selected = 0;
                      PovWidget.Spot[12].Selected = 0;
                      PovWidget.Spot[13].Selected = 1;
-                     if (Eye.UpAxis == POS_Z)
-                        Eye.UpAxis = NEG_Z;
+                     if (POV.UpAxis == POS_Z)
+                        POV.UpAxis = NEG_Z;
                      else
-                        Eye.UpAxis = POS_Z;
+                        POV.UpAxis = POS_Z;
                      Refresh = TRUE;
                   }
                }
@@ -323,70 +324,70 @@ void CamMouseButtonHandler(GLFWwindow *Window, int Button, int Action, int Mods)
                if (Pick < 5) {
                   for(i=0;i<5;i++) HostWidget.Spot[i].Selected = 0;
                   HostWidget.Spot[Pick].Selected = 1;
-                  Eye.Host.Type = Pick;
+                  POV.Host.Type = Pick;
                }
                else if (Pick == 5) {
-                  if (Eye.Host.Type == TARGET_WORLD) {
+                  if (POV.Host.Type == TARGET_WORLD) {
                      do {
-                        Eye.Host.World = (Eye.Host.World+NWORLD-1)%NWORLD;
-                     } while(!World[Eye.Host.World].Exists);
+                        POV.Host.World = (POV.Host.World+NWORLD-1)%NWORLD;
+                     } while(!World[POV.Host.World].Exists);
                   }
-                  else if (Eye.Host.Type == TARGET_REFORB ||
-                           Eye.Host.Type == TARGET_FRM) {
-                     Eye.Host.RefOrb = (Eye.Host.RefOrb+Norb-1)%Norb;
-                     Eye.Host.World = Orb[Eye.Host.RefOrb].World;
-                     while(!(SC[Eye.Host.SC].Exists &&
-                             SC[Eye.Host.SC].RefOrb ==
-                             Eye.Host.RefOrb)) {
-                        Eye.Host.SC = (Eye.Host.SC+1)%Nsc;
+                  else if (POV.Host.Type == TARGET_REFORB ||
+                           POV.Host.Type == TARGET_FRM) {
+                     POV.Host.RefOrb = (POV.Host.RefOrb+Norb-1)%Norb;
+                     POV.Host.World = Orb[POV.Host.RefOrb].World;
+                     while(!(SC[POV.Host.SC].Exists &&
+                             SC[POV.Host.SC].RefOrb ==
+                             POV.Host.RefOrb)) {
+                        POV.Host.SC = (POV.Host.SC+1)%Nsc;
                      };
                   }
-                  else if (Eye.Host.Type == TARGET_SC) {
+                  else if (POV.Host.Type == TARGET_SC) {
                      do {
-                        Eye.Host.SC = (Eye.Host.SC+Nsc-1)%Nsc;
-                     } while(!SC[Eye.Host.SC].Exists);
-                     Eye.Host.RefOrb = SC[Eye.Host.SC].RefOrb;
-                     Eye.Host.World = Orb[Eye.Host.RefOrb].World;
+                        POV.Host.SC = (POV.Host.SC+Nsc-1)%Nsc;
+                     } while(!SC[POV.Host.SC].Exists);
+                     POV.Host.RefOrb = SC[POV.Host.SC].RefOrb;
+                     POV.Host.World = Orb[POV.Host.RefOrb].World;
                   }
                   else {
-                     Eye.Host.Body = (Eye.Host.Body+SC[Eye.Host.SC].Nb-1)
-                        %SC[Eye.Host.SC].Nb;
+                     POV.Host.Body = (POV.Host.Body+SC[POV.Host.SC].Nb-1)
+                        %SC[POV.Host.SC].Nb;
                   }
                }
                else if (Pick == 6) {
-                  if (Eye.Host.Type == TARGET_WORLD) {
+                  if (POV.Host.Type == TARGET_WORLD) {
                      do {
-                        Eye.Host.World = (Eye.Host.World+1)%NWORLD;
-                     } while(!World[Eye.Host.World].Exists);
+                        POV.Host.World = (POV.Host.World+1)%NWORLD;
+                     } while(!World[POV.Host.World].Exists);
                   }
-                  else if (Eye.Host.Type == TARGET_REFORB ||
-                           Eye.Host.Type == TARGET_FRM) {
-                     Eye.Host.RefOrb = (Eye.Host.RefOrb+1)%Norb;
-                     Eye.Host.World = Orb[Eye.Host.RefOrb].World;
-                     while(!(SC[Eye.Host.SC].Exists &&
-                             SC[Eye.Host.SC].RefOrb ==
-                             Eye.Host.RefOrb)) {
-                        Eye.Host.SC = (Eye.Host.SC+1)%Nsc;
+                  else if (POV.Host.Type == TARGET_REFORB ||
+                           POV.Host.Type == TARGET_FRM) {
+                     POV.Host.RefOrb = (POV.Host.RefOrb+1)%Norb;
+                     POV.Host.World = Orb[POV.Host.RefOrb].World;
+                     while(!(SC[POV.Host.SC].Exists &&
+                             SC[POV.Host.SC].RefOrb ==
+                             POV.Host.RefOrb)) {
+                        POV.Host.SC = (POV.Host.SC+1)%Nsc;
                      };
                   }
-                  else if (Eye.Host.Type == TARGET_SC) {
+                  else if (POV.Host.Type == TARGET_SC) {
                      do {
-                        Eye.Host.SC = (Eye.Host.SC+1)%Nsc;
-                     } while(!SC[Eye.Host.SC].Exists);
-                     Eye.Host.RefOrb = SC[Eye.Host.SC].RefOrb;
-                     Eye.Host.World = Orb[Eye.Host.RefOrb].World;
+                        POV.Host.SC = (POV.Host.SC+1)%Nsc;
+                     } while(!SC[POV.Host.SC].Exists);
+                     POV.Host.RefOrb = SC[POV.Host.SC].RefOrb;
+                     POV.Host.World = Orb[POV.Host.RefOrb].World;
                   }
                   else {
-                     Eye.Host.Body = (Eye.Host.Body+1)%SC[Eye.Host.SC].Nb;
+                     POV.Host.Body = (POV.Host.Body+1)%SC[POV.Host.SC].Nb;
                   }
                }
                else if (Pick == 7) {
-                  Eye.Range *= 1.6;
-                  if (Eye.Range > 10000.0) Eye.Range = 10000.0;
+                  POV.Range *= 1.6;
+                  if (POV.Range > 10000.0) POV.Range = 10000.0;
                }
                else if (Pick == 8) {
-                  Eye.Range *= 0.625;
-                  if (Eye.Range < 1.0) Eye.Range = 1.0;
+                  POV.Range *= 0.625;
+                  if (POV.Range < 1.0) POV.Range = 1.0;
                }
             }
             else if (x >= TargetWidget.xmin && x <= TargetWidget.xmax &&
@@ -404,60 +405,60 @@ void CamMouseButtonHandler(GLFWwindow *Window, int Button, int Action, int Mods)
                if (Pick < 5) {
                   for(i=0;i<5;i++) TargetWidget.Spot[i].Selected = 0;
                   TargetWidget.Spot[Pick].Selected = 1;
-                  Eye.Target.Type = Pick;
+                  POV.Target.Type = Pick;
                }
                else if (Pick == 5) {
-                  if (Eye.Target.Type == TARGET_WORLD) {
+                  if (POV.Target.Type == TARGET_WORLD) {
                      do {
-                        Eye.Target.World = (Eye.Target.World+NWORLD-1)%NWORLD;
-                     } while(!World[Eye.Target.World].Exists);
+                        POV.Target.World = (POV.Target.World+NWORLD-1)%NWORLD;
+                     } while(!World[POV.Target.World].Exists);
                   }
-                  else if (Eye.Target.Type == TARGET_REFORB ||
-                           Eye.Target.Type == TARGET_FRM) {
-                     Eye.Target.RefOrb = (Eye.Target.RefOrb+Norb-1)%Norb;
-                     Eye.Target.World = Orb[Eye.Target.RefOrb].World;
+                  else if (POV.Target.Type == TARGET_REFORB ||
+                           POV.Target.Type == TARGET_FRM) {
+                     POV.Target.RefOrb = (POV.Target.RefOrb+Norb-1)%Norb;
+                     POV.Target.World = Orb[POV.Target.RefOrb].World;
                   }
-                  else if (Eye.Target.Type == TARGET_SC) {
+                  else if (POV.Target.Type == TARGET_SC) {
                      do {
-                        Eye.Target.SC = (Eye.Target.SC+Nsc-1)%Nsc;
-                     } while(!SC[Eye.Target.SC].Exists);
-                     Eye.Target.RefOrb = SC[Eye.Target.SC].RefOrb;
-                     Eye.Target.World = Orb[Eye.Target.RefOrb].World;
+                        POV.Target.SC = (POV.Target.SC+Nsc-1)%Nsc;
+                     } while(!SC[POV.Target.SC].Exists);
+                     POV.Target.RefOrb = SC[POV.Target.SC].RefOrb;
+                     POV.Target.World = Orb[POV.Target.RefOrb].World;
                   }
                   else {
-                     Eye.Target.Body = (Eye.Target.Body+SC[Eye.Target.SC].Nb-1)
-                        %SC[Eye.Target.SC].Nb;
+                     POV.Target.Body = (POV.Target.Body+SC[POV.Target.SC].Nb-1)
+                        %SC[POV.Target.SC].Nb;
                   }
                }
                else if (Pick == 6) {
-                  if (Eye.Target.Type == TARGET_WORLD) {
+                  if (POV.Target.Type == TARGET_WORLD) {
                      do {
-                        Eye.Target.World = (Eye.Target.World+1)%NWORLD;
-                     } while(!World[Eye.Target.World].Exists);
+                        POV.Target.World = (POV.Target.World+1)%NWORLD;
+                     } while(!World[POV.Target.World].Exists);
                   }
-                  else if (Eye.Target.Type == TARGET_REFORB ||
-                           Eye.Target.Type == TARGET_FRM) {
-                     Eye.Target.RefOrb = (Eye.Target.RefOrb+1)%Norb;
-                     Eye.Target.World = Orb[Eye.Target.RefOrb].World;
+                  else if (POV.Target.Type == TARGET_REFORB ||
+                           POV.Target.Type == TARGET_FRM) {
+                     POV.Target.RefOrb = (POV.Target.RefOrb+1)%Norb;
+                     POV.Target.World = Orb[POV.Target.RefOrb].World;
                   }
-                  else if (Eye.Target.Type == TARGET_SC) {
+                  else if (POV.Target.Type == TARGET_SC) {
                      do {
-                        Eye.Target.SC = (Eye.Target.SC+1)%Nsc;
-                     } while(!SC[Eye.Target.SC].Exists);
-                     Eye.Target.RefOrb = SC[Eye.Target.SC].RefOrb;
-                     Eye.Target.World = Orb[Eye.Target.RefOrb].World;
+                        POV.Target.SC = (POV.Target.SC+1)%Nsc;
+                     } while(!SC[POV.Target.SC].Exists);
+                     POV.Target.RefOrb = SC[POV.Target.SC].RefOrb;
+                     POV.Target.World = Orb[POV.Target.RefOrb].World;
                   }
                   else {
-                     Eye.Target.Body = (Eye.Target.Body+1)%SC[Eye.Target.SC].Nb;
+                     POV.Target.Body = (POV.Target.Body+1)%SC[POV.Target.SC].Nb;
                   }
                }
                else if (Pick == 7) {
-                  Eye.Range *= 1.6;
-                  if (Eye.Range > 10000.0) Eye.Range = 10000.0;
+                  POV.Range *= 1.6;
+                  if (POV.Range > 10000.0) POV.Range = 10000.0;
                }
                else if (Pick == 8) {
-                  Eye.Range *= 0.625;
-                  if (Eye.Range < 1.0) Eye.Range = 1.0;
+                  POV.Range *= 0.625;
+                  if (POV.Range < 1.0) POV.Range = 1.0;
                }
             }
             else if (x >= CamShowWidget.xmin && x <= CamShowWidget.xmax &&
@@ -494,23 +495,23 @@ void CamMouseButtonHandler(GLFWwindow *Window, int Button, int Action, int Mods)
             if (PausedByMouse) PauseFlag = 0;
             PausedByMouse = 0;
             MouseDown = 0;
-            Eye.w[1] = 0.0;
-            Eye.w[0] = 0.0;
+            POV.w[1] = 0.0;
+            POV.w[0] = 0.0;
          }
       }
 
       if (Refresh) {
          Refresh = FALSE;
-         SetPovOrientation(&Eye);
+         SetPovOrientation();
       }
 }
 /**********************************************************************/
 void CamMouseMotionHandler(GLFWwindow *Window, double x, double y)
 {
-      if (MouseDown && Eye.Mode == TRACK_HOST) {
-         Eye.w[1] = MouseScaleFactor * (x-MouseClickX);
-         Eye.w[0] = MouseScaleFactor * (y-MouseClickY);
-         Eye.w[2] = 0.0;
+      if (MouseDown && POV.Mode == TRACK_HOST) {
+         POV.w[1] = MouseScaleFactor * (x-MouseClickX);
+         POV.w[0] = MouseScaleFactor * (y-MouseClickY);
+         POV.w[2] = 0.0;
       }
 }
 /**********************************************************************/
@@ -871,9 +872,9 @@ void FrameReshape(GLFWwindow *Window, int width, int height)
 void CamReshape(GLFWwindow *Window, int width, int height)
 {
       glfwMakeContextCurrent(Window);
-      Eye.PixWidth = width;
-      Eye.PixHeight = height;
-      SetupViewVolume(Window,&Eye);
+      CamWidth = width;
+      CamHeight = height;
+      SetupViewVolume(width,height);
 }
 /**********************************************************************/
 void MapReshape(GLFWwindow *Window, int width, int height)
@@ -923,8 +924,7 @@ void InitCamWindow(void)
       #ifdef __APPLE__
       glfwWindowHint(GLFW_COCOA_RETINA_FRAMEBUFFER,GLFW_FALSE);
 	   #endif
-	   glfwWindowHint(GLFW_SAMPLES,4);
-      CamWindow = glfwCreateWindow(Eye.PixWidth,Eye.PixHeight,CamTitle,NULL,NULL);
+      CamWindow = glfwCreateWindow(CamWidth,CamHeight,CamTitle,NULL,NULL);
       #if (defined(GLEW_BUILD) || defined(GLEW_STATIC))
       if (GLEW_OK != glewInit()) {
          printf("glew failed to initialize in InitCamWindow\n");
@@ -935,7 +935,7 @@ void InitCamWindow(void)
       glfwMakeContextCurrent(CamWindow);
       glfwSwapInterval(1); /* Vsync */
       glfwSetWindowPos(CamWindow,0,30);
-      glViewport(0,0,Eye.PixWidth,Eye.PixHeight);
+      glViewport(0,0,CamWidth,CamHeight);
 
 /* .. Set GL state variables */
       glClearColor(0.0,0.0,0.0,1.0);
@@ -949,7 +949,6 @@ void InitCamWindow(void)
       glPolygonMode(GL_FRONT, GL_FILL);
       /*glPolygonMode(GL_FRONT, GL_LINE);*/
       glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-      glEnable(GL_MULTISAMPLE);
 
 /* .. Create light */
       glEnable(GL_LIGHTING);
@@ -967,14 +966,13 @@ void InitCamWindow(void)
       glfwSetWindowSizeCallback(CamWindow,CamReshape);
 
 /* .. Set up view volume */
-      Eye.Near = 1.0;
-      Eye.Far = 50.0E3;  /* m */
-      SkyDistance = 0.5*Eye.Far;
+      POV.Near = 1.0;
+      POV.Far = 50.0E3;  /* m */
+      SkyDistance = 0.5*POV.Far;
 
-      Font8x11[CAM_FONT] = LoadFont8x11();
-      Font8x13[CAM_FONT] = LoadFont8x13();
-      InitCamWidgets(&Eye);
-      SetupViewVolume(CamWindow,&Eye);
+      Font8x11Offset = LoadFont8x11();
+      InitCamWidgets();
+      SetupViewVolume(CamWidth,CamHeight);
       LoadShadowMapFBO();
       #ifdef _USE_SHADERS_
          printf("Loading Cam Shaders\n");
@@ -984,6 +982,7 @@ void InitCamWindow(void)
       LoadCamTextures();
       printf("Loading 3D Noise\n");
       Load3DNoise();
+      VREnabled = FALSE;
       SeeThruPassNeeded = FALSE;
       printf("Loading Cam Lists\n");
       LoadCamLists();
@@ -1015,7 +1014,7 @@ void InitMapWindow(void)
 	   #endif
       MapWindow = glfwCreateWindow(MapWidth,MapHeight,MapTitle,NULL,NULL);
       glfwMakeContextCurrent(MapWindow);
-      glfwSetWindowPos(MapWindow,Eye.PixWidth,30);
+      glfwSetWindowPos(MapWindow,CamWidth,30);
 
 /* .. Set Callback Functions */
       glfwSetKeyCallback(MapWindow,KeyHandler);
@@ -1034,9 +1033,6 @@ void InitMapWindow(void)
       glLightfv(GL_LIGHT0,GL_DIFFUSE,White);
       glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
       glEnable(GL_BLEND);
-
-      Font8x11[MAP_FONT] = LoadFont8x11();
-      Font8x13[MAP_FONT] = LoadFont8x13();
 
 /* .. Set up view volume */
       glMatrixMode(GL_PROJECTION);
@@ -1122,10 +1118,10 @@ void InitOrreryWindow(void)
 
       #ifdef __APPLE__
       glfwWindowHint(GLFW_COCOA_RETINA_FRAMEBUFFER,GLFW_FALSE);
-      #endif
+	  #endif
       OrreryWindow = glfwCreateWindow(OrreryWidth,OrreryHeight,OrreryTitle,NULL,NULL);
       glfwMakeContextCurrent(OrreryWindow);
-      glfwSetWindowPos(OrreryWindow,Eye.PixWidth,MapHeight+66);
+      glfwSetWindowPos(OrreryWindow,CamWidth,MapHeight+66);
 
 /* .. Set Callback Functions */
       glfwSetMouseButtonCallback(OrreryWindow,OrreryMouseButtonHandler);
@@ -1149,9 +1145,6 @@ void InitOrreryWindow(void)
       glLightfv(GL_LIGHT0,GL_DIFFUSE,White);
       glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
       glEnable(GL_BLEND);
-
-      Font8x11[ORRERY_FONT] = LoadFont8x11();
-      Font8x13[ORRERY_FONT] = LoadFont8x13();
 
 /* .. Set up view volume */
       O->Radius = ((double) OrreryWidth)/(2.0*80.0)*O->Scale[O->Zoom];
@@ -1184,11 +1177,11 @@ void InitSphereWindow(void)
       SphereWindowHeight = 256 + 16*(NumSphereWindowMenuLines + 2);
       #ifdef __APPLE__
       glfwWindowHint(GLFW_COCOA_RETINA_FRAMEBUFFER,GLFW_FALSE);
-      #endif
+	  #endif
       SphereWindow = glfwCreateWindow(SphereWindowWidth,SphereWindowHeight,
             "42 Unit Sphere Viewer",NULL,NULL);
       glfwMakeContextCurrent(SphereWindow);
-      glfwSetWindowPos(SphereWindow,Eye.PixWidth+MapWidth,30);
+      glfwSetWindowPos(SphereWindow,CamWidth+MapWidth,30);
 
       glfwSetMouseButtonCallback(SphereWindow,SphereMouseButtonHandler);
       glfwSetKeyCallback(SphereWindow,KeyHandler);
@@ -1197,9 +1190,6 @@ void InitSphereWindow(void)
 
       glClearColor(0.0,0.0,0.0,1.0);
       glPolygonMode(GL_FRONT,GL_FILL);
-
-      Font8x11[SPHERE_FONT] = LoadFont8x11();
-      Font8x13[SPHERE_FONT] = LoadFont8x13();
 
       glMatrixMode(GL_PROJECTION);
       glLoadIdentity();
@@ -1229,16 +1219,16 @@ long GuiCmdInterpreter(char CmdLine[512], double *CmdTime)
       long NewCmdProcessed = FALSE;
       long Ifov;
 
-      if (sscanf(CmdLine,"%lf POV.Host.SC %ld",CmdTime,&Eye.Host.SC) == 2) {
+      if (sscanf(CmdLine,"%lf POV.Host.SC %ld",CmdTime,&POV.Host.SC) == 2) {
          NewCmdProcessed = TRUE;
-         Eye.Host.RefOrb = SC[Eye.Host.SC].RefOrb;
-         Eye.Host.World = Orb[Eye.Host.RefOrb].World;
+         POV.Host.RefOrb = SC[POV.Host.SC].RefOrb;
+         POV.Host.World = Orb[POV.Host.RefOrb].World;
       }
 
-      if (sscanf(CmdLine,"%lf Eye.Host.RefOrb %ld",CmdTime,&Eye.Host.RefOrb) == 2) {
+      if (sscanf(CmdLine,"%lf POV.Host.RefOrb %ld",CmdTime,&POV.Host.RefOrb) == 2) {
          NewCmdProcessed = TRUE;
-         Eye.Host.Type = TARGET_REFORB;
-         Eye.Host.World = Orb[Eye.Host.RefOrb].World;
+         POV.Host.Type = TARGET_REFORB;
+         POV.Host.World = Orb[POV.Host.RefOrb].World;
       }
 
       if (sscanf(CmdLine,"%lf CaptureCam %s",CmdTime,response) == 2) {
@@ -1251,7 +1241,7 @@ long GuiCmdInterpreter(char CmdLine[512], double *CmdTime)
          if (DecodeString(response) == TRUE) {
             glfwMakeContextCurrent(CamWindow);
             CaptureScreenToPpm("./Screenshots/",
-               "CamSnap.ppm",Eye.PixHeight,Eye.PixWidth);
+               "CamSnap.ppm",CamHeight,CamWidth);
          }
       }
 
@@ -1317,36 +1307,36 @@ long GuiCmdInterpreter(char CmdLine[512], double *CmdTime)
       if (sscanf(CmdLine,"%lf GL Output Step = %lf",CmdTime,&DTOUTGL) == 2) {
          NewCmdProcessed = TRUE;
       }
-      if (sscanf(CmdLine,"%lf POV CmdRange = %lf",CmdTime,&Eye.CmdRange) == 2) {
+      if (sscanf(CmdLine,"%lf POV CmdRange = %lf",CmdTime,&POV.CmdRange) == 2) {
          NewCmdProcessed = TRUE;
       }
-      if (sscanf(CmdLine,"%lf POV CmdSeq = %ld",CmdTime,&Eye.CmdSeq) == 2) {
+      if (sscanf(CmdLine,"%lf POV CmdSeq = %ld",CmdTime,&POV.CmdSeq) == 2) {
          NewCmdProcessed = TRUE;
       }
       if (sscanf(CmdLine,"%lf POV CmdPermute = [%lf %lf %lf; %lf %lf %lf; %lf %lf %lf]",
          CmdTime,
-            &Eye.CmdPermute[0][0],&Eye.CmdPermute[0][1],&Eye.CmdPermute[0][2],
-            &Eye.CmdPermute[1][0],&Eye.CmdPermute[1][1],&Eye.CmdPermute[1][2],
-            &Eye.CmdPermute[2][0],&Eye.CmdPermute[2][1],&Eye.CmdPermute[2][2]) == 10) {
+            &POV.CmdPermute[0][0],&POV.CmdPermute[0][1],&POV.CmdPermute[0][2],
+            &POV.CmdPermute[1][0],&POV.CmdPermute[1][1],&POV.CmdPermute[1][2],
+            &POV.CmdPermute[2][0],&POV.CmdPermute[2][1],&POV.CmdPermute[2][2]) == 10) {
          NewCmdProcessed = TRUE;
       }
       if (sscanf(CmdLine,"%lf POV CmdAngle = [%lf %lf %lf] deg",
          CmdTime,&Ang1,&Ang2,&Ang3) == 4) {
          NewCmdProcessed = TRUE;
-         Eye.CmdAngle[0] = Ang1*D2R;
-         Eye.CmdAngle[1] = Ang2*D2R;
-         Eye.CmdAngle[2] = Ang3*D2R;
+         POV.CmdAngle[0] = Ang1*D2R;
+         POV.CmdAngle[1] = Ang2*D2R;
+         POV.CmdAngle[2] = Ang3*D2R;
       }
-      if (sscanf(CmdLine,"%lf POV TimeToGo = %lf",CmdTime,&Eye.TimeToGo) == 2) {
+      if (sscanf(CmdLine,"%lf POV TimeToGo = %lf",CmdTime,&POV.TimeToGo) == 2) {
          NewCmdProcessed = TRUE;
       }
       if (sscanf(CmdLine,"%lf POV Frame = %c",CmdTime,&FrameChar) == 2) {
          NewCmdProcessed = TRUE;
-         if (FrameChar == 'N') Eye.Frame = FRAME_N;
-         else if (FrameChar == 'L') Eye.Frame = FRAME_L;
-         else if (FrameChar == 'F') Eye.Frame = FRAME_F;
-         else if (FrameChar == 'S') Eye.Frame = FRAME_S;
-         else if (FrameChar == 'B') Eye.Frame = FRAME_B;
+         if (FrameChar == 'N') POV.Frame = FRAME_N;
+         else if (FrameChar == 'L') POV.Frame = FRAME_L;
+         else if (FrameChar == 'F') POV.Frame = FRAME_F;
+         else if (FrameChar == 'S') POV.Frame = FRAME_S;
+         else if (FrameChar == 'B') POV.Frame = FRAME_B;
       }
 
       return(NewCmdProcessed);
@@ -1359,10 +1349,11 @@ void HandoffToGui(int argc, char **argv)
       ReadGraphicsInpFile();
       LoadFOVs();
       InitColors();
-      SetPovOrientation(&Eye);
-      UpdatePOV(&Eye);
+      SetPovOrientation();
+      UpdatePOV();
 
       printf("Initializing glfw\n");
+      glutInit(&argc,argv);
       glfwSetErrorCallback(GlfwErrorHandler);
       if (!glfwInit()) {
          printf("Error initializing glfw\n");

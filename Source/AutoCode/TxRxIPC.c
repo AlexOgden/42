@@ -10,7 +10,6 @@ void WriteToSocket(SOCKET Socket,  char **Prefix, long Nprefix, long EchoEnabled
       struct SCType *S;
       struct WorldType *W;
       struct OrbitType *O;
-      struct CommLinkType *L;
       int Success;
       char Ack[4] = "Ack\0";
       long Is,Ipfx;
@@ -184,182 +183,6 @@ void WriteToSocket(SOCKET Socket,  char **Prefix, long Nprefix, long EchoEnabled
                      if (EchoEnabled) printf("%s",line);
                   }
                }
-
-               for(k=0;k<S->Nmag;k++) {
-                  sprintf(line,"SC[%ld].MAG[%ld].Field = %18.12le\n",Is,k,
-                     S->MAG[k].Field);
-                  if (!strncmp(line,Prefix[Ipfx],PfxLen)) {
-                     LineLen = strlen(line);
-                     memcpy(&Msg[MsgLen],line,LineLen);
-                     MsgLen += LineLen;
-                     if (EchoEnabled) printf("%s",line);
-                  }
-               }
-
-               for(k=0;k<S->Ncss;k++) {
-                  sprintf(line,"SC[%ld].CSS[%ld].Valid = %ld\n",Is,k,
-                     S->CSS[k].Valid);
-                  if (!strncmp(line,Prefix[Ipfx],PfxLen)) {
-                     LineLen = strlen(line);
-                     memcpy(&Msg[MsgLen],line,LineLen);
-                     MsgLen += LineLen;
-                     if (EchoEnabled) printf("%s",line);
-                  }
-               }
-
-               for(k=0;k<S->Ncss;k++) {
-                  sprintf(line,"SC[%ld].CSS[%ld].Illum = %18.12le\n",Is,k,
-                     S->CSS[k].Illum);
-                  if (!strncmp(line,Prefix[Ipfx],PfxLen)) {
-                     LineLen = strlen(line);
-                     memcpy(&Msg[MsgLen],line,LineLen);
-                     MsgLen += LineLen;
-                     if (EchoEnabled) printf("%s",line);
-                  }
-               }
-
-               for(k=0;k<S->Nfss;k++) {
-                  sprintf(line,"SC[%ld].FSS[%ld].Valid = %ld\n",Is,k,
-                     S->FSS[k].Valid);
-                  if (!strncmp(line,Prefix[Ipfx],PfxLen)) {
-                     LineLen = strlen(line);
-                     memcpy(&Msg[MsgLen],line,LineLen);
-                     MsgLen += LineLen;
-                     if (EchoEnabled) printf("%s",line);
-                  }
-               }
-
-               for(k=0;k<S->Nfss;k++) {
-                  sprintf(line,"SC[%ld].FSS[%ld].SunAng = [%18.12le %18.12le]\n",Is,k,
-                     S->FSS[k].SunAng[0],S->FSS[k].SunAng[1]);
-                  if (!strncmp(line,Prefix[Ipfx],PfxLen)) {
-                     LineLen = strlen(line);
-                     memcpy(&Msg[MsgLen],line,LineLen);
-                     MsgLen += LineLen;
-                     if (EchoEnabled) printf("%s",line);
-                  }
-               }
-
-               for(k=0;k<S->Nst;k++) {
-                  sprintf(line,"SC[%ld].ST[%ld].Valid = %ld\n",Is,k,
-                     S->ST[k].Valid);
-                  if (!strncmp(line,Prefix[Ipfx],PfxLen)) {
-                     LineLen = strlen(line);
-                     memcpy(&Msg[MsgLen],line,LineLen);
-                     MsgLen += LineLen;
-                     if (EchoEnabled) printf("%s",line);
-                  }
-               }
-
-               for(k=0;k<S->Nst;k++) {
-                  sprintf(line,"SC[%ld].ST[%ld].qn = [%18.12le %18.12le %18.12le %18.12le]\n",Is,k,
-                     S->ST[k].qn[0],S->ST[k].qn[1],S->ST[k].qn[2],S->ST[k].qn[3]);
-                  if (!strncmp(line,Prefix[Ipfx],PfxLen)) {
-                     LineLen = strlen(line);
-                     memcpy(&Msg[MsgLen],line,LineLen);
-                     MsgLen += LineLen;
-                     if (EchoEnabled) printf("%s",line);
-                  }
-               }
-
-               for(k=0;k<S->Ngps;k++) {
-                  sprintf(line,"SC[%ld].GPS[%ld].Valid = %ld\n",Is,k,
-                     S->GPS[k].Valid);
-                  if (!strncmp(line,Prefix[Ipfx],PfxLen)) {
-                     LineLen = strlen(line);
-                     memcpy(&Msg[MsgLen],line,LineLen);
-                     MsgLen += LineLen;
-                     if (EchoEnabled) printf("%s",line);
-                  }
-               }
-
-               for(k=0;k<S->Ngps;k++) {
-                  sprintf(line,"SC[%ld].GPS[%ld].Rollover = %ld\n",Is,k,
-                     S->GPS[k].Rollover);
-                  if (!strncmp(line,Prefix[Ipfx],PfxLen)) {
-                     LineLen = strlen(line);
-                     memcpy(&Msg[MsgLen],line,LineLen);
-                     MsgLen += LineLen;
-                     if (EchoEnabled) printf("%s",line);
-                  }
-               }
-
-               for(k=0;k<S->Ngps;k++) {
-                  sprintf(line,"SC[%ld].GPS[%ld].Week = %ld\n",Is,k,
-                     S->GPS[k].Week);
-                  if (!strncmp(line,Prefix[Ipfx],PfxLen)) {
-                     LineLen = strlen(line);
-                     memcpy(&Msg[MsgLen],line,LineLen);
-                     MsgLen += LineLen;
-                     if (EchoEnabled) printf("%s",line);
-                  }
-               }
-
-               for(k=0;k<S->Ngps;k++) {
-                  sprintf(line,"SC[%ld].GPS[%ld].Sec = %18.12le\n",Is,k,
-                     S->GPS[k].Sec);
-                  if (!strncmp(line,Prefix[Ipfx],PfxLen)) {
-                     LineLen = strlen(line);
-                     memcpy(&Msg[MsgLen],line,LineLen);
-                     MsgLen += LineLen;
-                     if (EchoEnabled) printf("%s",line);
-                  }
-               }
-
-               for(k=0;k<S->Ngps;k++) {
-                  sprintf(line,"SC[%ld].GPS[%ld].PosN = [%18.12le %18.12le %18.12le]\n",Is,k,
-                     S->GPS[k].PosN[0],S->GPS[k].PosN[1],S->GPS[k].PosN[2]);
-                  if (!strncmp(line,Prefix[Ipfx],PfxLen)) {
-                     LineLen = strlen(line);
-                     memcpy(&Msg[MsgLen],line,LineLen);
-                     MsgLen += LineLen;
-                     if (EchoEnabled) printf("%s",line);
-                  }
-               }
-
-               for(k=0;k<S->Ngps;k++) {
-                  sprintf(line,"SC[%ld].GPS[%ld].VelN = [%18.12le %18.12le %18.12le]\n",Is,k,
-                     S->GPS[k].VelN[0],S->GPS[k].VelN[1],S->GPS[k].VelN[2]);
-                  if (!strncmp(line,Prefix[Ipfx],PfxLen)) {
-                     LineLen = strlen(line);
-                     memcpy(&Msg[MsgLen],line,LineLen);
-                     MsgLen += LineLen;
-                     if (EchoEnabled) printf("%s",line);
-                  }
-               }
-
-               for(k=0;k<S->Ngps;k++) {
-                  sprintf(line,"SC[%ld].GPS[%ld].PosW = [%18.12le %18.12le %18.12le]\n",Is,k,
-                     S->GPS[k].PosW[0],S->GPS[k].PosW[1],S->GPS[k].PosW[2]);
-                  if (!strncmp(line,Prefix[Ipfx],PfxLen)) {
-                     LineLen = strlen(line);
-                     memcpy(&Msg[MsgLen],line,LineLen);
-                     MsgLen += LineLen;
-                     if (EchoEnabled) printf("%s",line);
-                  }
-               }
-
-               for(k=0;k<S->Ngps;k++) {
-                  sprintf(line,"SC[%ld].GPS[%ld].VelW = [%18.12le %18.12le %18.12le]\n",Is,k,
-                     S->GPS[k].VelW[0],S->GPS[k].VelW[1],S->GPS[k].VelW[2]);
-                  if (!strncmp(line,Prefix[Ipfx],PfxLen)) {
-                     LineLen = strlen(line);
-                     memcpy(&Msg[MsgLen],line,LineLen);
-                     MsgLen += LineLen;
-                     if (EchoEnabled) printf("%s",line);
-                  }
-               }
-
-               for(k=0;k<S->Nacc;k++) {
-                  sprintf(line,"SC[%ld].Accel[%ld].TrueAcc = %18.12le\n",Is,k,
-                     S->Accel[k].TrueAcc);
-                  if (!strncmp(line,Prefix[Ipfx],PfxLen)) {
-                     LineLen = strlen(line);
-                     memcpy(&Msg[MsgLen],line,LineLen);
-                     MsgLen += LineLen;
-                     if (EchoEnabled) printf("%s",line);
-                  }
-               }
             }
          }
 
@@ -420,75 +243,6 @@ void WriteToSocket(SOCKET Socket,  char **Prefix, long Nprefix, long EchoEnabled
             }
          }
 
-         for(Is=0;Is<Nlink;Is++) {
-            if (CommLink[Is].Exists) {
-               L = &CommLink[Is];
-
-               sprintf(line,"CommLink[%ld].Doppler = %18.12le\n",Is,
-                  L->Doppler);
-               if (!strncmp(line,Prefix[Ipfx],PfxLen)) {
-                  LineLen = strlen(line);
-                  memcpy(&Msg[MsgLen],line,LineLen);
-                  MsgLen += LineLen;
-                  if (EchoEnabled) printf("%s",line);
-               }
-
-               sprintf(line,"CommLink[%ld].Delay = %18.12le\n",Is,
-                  L->Delay);
-               if (!strncmp(line,Prefix[Ipfx],PfxLen)) {
-                  LineLen = strlen(line);
-                  memcpy(&Msg[MsgLen],line,LineLen);
-                  MsgLen += LineLen;
-                  if (EchoEnabled) printf("%s",line);
-               }
-
-               sprintf(line,"CommLink[%ld].Carrier = %18.12le\n",Is,
-                  L->Carrier);
-               if (!strncmp(line,Prefix[Ipfx],PfxLen)) {
-                  LineLen = strlen(line);
-                  memcpy(&Msg[MsgLen],line,LineLen);
-                  MsgLen += LineLen;
-                  if (EchoEnabled) printf("%s",line);
-               }
-
-               sprintf(line,"CommLink[%ld].CNR = %18.12le\n",Is,
-                  L->CNR);
-               if (!strncmp(line,Prefix[Ipfx],PfxLen)) {
-                  LineLen = strlen(line);
-                  memcpy(&Msg[MsgLen],line,LineLen);
-                  MsgLen += LineLen;
-                  if (EchoEnabled) printf("%s",line);
-               }
-
-               sprintf(line,"CommLink[%ld].Range = %18.12le\n",Is,
-                  L->Range);
-               if (!strncmp(line,Prefix[Ipfx],PfxLen)) {
-                  LineLen = strlen(line);
-                  memcpy(&Msg[MsgLen],line,LineLen);
-                  MsgLen += LineLen;
-                  if (EchoEnabled) printf("%s",line);
-               }
-
-               sprintf(line,"CommLink[%ld].RangeRate = %18.12le\n",Is,
-                  L->RangeRate);
-               if (!strncmp(line,Prefix[Ipfx],PfxLen)) {
-                  LineLen = strlen(line);
-                  memcpy(&Msg[MsgLen],line,LineLen);
-                  MsgLen += LineLen;
-                  if (EchoEnabled) printf("%s",line);
-               }
-
-               sprintf(line,"CommLink[%ld].PathIsOcculted = %ld\n",Is,
-                  L->PathIsOcculted);
-               if (!strncmp(line,Prefix[Ipfx],PfxLen)) {
-                  LineLen = strlen(line);
-                  memcpy(&Msg[MsgLen],line,LineLen);
-                  MsgLen += LineLen;
-                  if (EchoEnabled) printf("%s",line);
-               }
-            }
-         }
-
       }
 
       sprintf(line,"[ENDMSG]\n");
@@ -522,7 +276,6 @@ void ReadFromSocket(SOCKET Socket, long EchoEnabled)
       long Imsg,Iline;
       int NumBytes;
       double DbleVal[30];
-      long LongVal[30];
       long Year,doy,Hour,Minute;
       double Second;
       char Ack[4] = "Ack\0";
@@ -866,55 +619,6 @@ void ReadFromSocket(SOCKET Socket, long EchoEnabled)
          Orb[Is].VelN[0] = DbleVal[0];
          Orb[Is].VelN[1] = DbleVal[1];
          Orb[Is].VelN[2] = DbleVal[2];
-      }
-
-      if (sscanf(line,"CommLink[%ld].Doppler = %le",
-         &Is,
-         &DbleVal[0]) == 2)
-      {
-         CommLink[Is].Doppler = DbleVal[0];
-      }
-
-      if (sscanf(line,"CommLink[%ld].Delay = %le",
-         &Is,
-         &DbleVal[0]) == 2)
-      {
-         CommLink[Is].Delay = DbleVal[0];
-      }
-
-      if (sscanf(line,"CommLink[%ld].Carrier = %le",
-         &Is,
-         &DbleVal[0]) == 2)
-      {
-         CommLink[Is].Carrier = DbleVal[0];
-      }
-
-      if (sscanf(line,"CommLink[%ld].CNR = %le",
-         &Is,
-         &DbleVal[0]) == 2)
-      {
-         CommLink[Is].CNR = DbleVal[0];
-      }
-
-      if (sscanf(line,"CommLink[%ld].Range = %le",
-         &Is,
-         &DbleVal[0]) == 2)
-      {
-         CommLink[Is].Range = DbleVal[0];
-      }
-
-      if (sscanf(line,"CommLink[%ld].RangeRate = %le",
-         &Is,
-         &DbleVal[0]) == 2)
-      {
-         CommLink[Is].RangeRate = DbleVal[0];
-      }
-
-      if (sscanf(line,"CommLink[%ld].PathIsOcculted = %ld",
-         &Is,
-         &LongVal[0]) == 2)
-      {
-         CommLink[Is].PathIsOcculted = LongVal[0];
       }
          if (!strncmp(line,"[ENDMSG]",8)) {
             /* Frame delimiter reached; continue if additional coalesced frames remain in Msg */

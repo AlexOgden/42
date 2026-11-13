@@ -379,22 +379,6 @@ long FswCmdInterpreter(char CmdLine[512],double *CmdTime)
          SC[Isc].AC.Thr[Ithr].ThrustLevelCmd = ThrLevelCmd;
       }
 
-      else if (sscanf(CmdLine,"%lf SC[%ld].AC.IdealTrq = [%lf %lf %lf]",
-         CmdTime,&Isc,&Vec[0],&Vec[1],&Vec[2]) == 5) {
-         NewCmdProcessed = TRUE;
-         SC[Isc].AC.IdealTrq[0] = Vec[0];
-         SC[Isc].AC.IdealTrq[1] = Vec[1];
-         SC[Isc].AC.IdealTrq[2] = Vec[2];
-      }
-
-      else if (sscanf(CmdLine,"%lf SC[%ld].AC.IdealFrc = [%lf %lf %lf]",
-         CmdTime,&Isc,&Vec[0],&Vec[1],&Vec[2]) == 5) {
-         NewCmdProcessed = TRUE;
-         SC[Isc].AC.IdealFrc[0] = Vec[0];
-         SC[Isc].AC.IdealFrc[1] = Vec[1];
-         SC[Isc].AC.IdealFrc[2] = Vec[2];
-      }
-
       else if (sscanf(CmdLine,"Event Eclipse Entry SC[%ld] qrl = [%lf %lf %lf %lf]",
          &Isc,&q[0],&q[1],&q[2],&q[3]) == 5) {
          *CmdTime = SimTime+DTSIM; /* Allows exiting while loop in CmdInterpreter */
@@ -630,13 +614,11 @@ void ThreeAxisAttitudeCommand(struct SCType *S)
 {
       struct JointType *G;
       struct BodyType *B;
-      struct AcJointType *AG;
       struct CmdType *Cmd;
       struct CmdVecType *PV, *SV;
       double CRN[3][3],C[3][3],qln[4],Cdot[3][3];
       double PriVecBi[3],SecVecBi[3],PriVecGi[3],SecVecGi[3];
       double PriVecGo[3],SecVecGo[3],CGoGi[3][3];
-      double AngErr;
       long Ig,Bi,i,j;
 
 
@@ -710,8 +692,7 @@ void ThreeAxisAttitudeCommand(struct SCType *S)
          G = &S->G[Ig];
          Bi = G->Bin;
          B = &S->B[Bi];
-         AG = &S->AC.G[Ig];
-         Cmd = &AG->GCmd;
+         Cmd = &S->AC.G[Ig].GCmd;
          PV = &Cmd->PriVec;
          SV = &Cmd->SecVec;
 
@@ -738,12 +719,6 @@ void ThreeAxisAttitudeCommand(struct SCType *S)
                PointGimbalToTarget(G->RotSeq,G->CGiBi,G->CBoGo,PriVecBi,
                   PV->R,Cmd->Ang);
             }
-            for(i=0;i<G->RotDOF;i++) {
-               AngErr = G->Ang[i] - Cmd->Ang[i];
-               Cmd->AngRate[i] = -AG->AngGain[i]/AG->AngRateGain[i]*AngErr;
-               Cmd->AngRate[i] = Limit(Cmd->AngRate[i],
-               -AG->MaxAngRate[i],AG->MaxAngRate[i]);
-               }
          }
       }
 }
@@ -1126,8 +1101,6 @@ void InstantFSW(struct SCType *S)
       struct AcInstantCtrlType *C;
       struct BodyType *B;
       struct CmdType *Cmd;
-      struct AcJointType *G;
-      struct CmdType *GC;
       double alpha[3],Iapp[3];
       double Hvnb[3],Herr[3],werr[3];
       long Ig,i,j;
@@ -1189,15 +1162,6 @@ void InstantFSW(struct SCType *S)
          VectorRampCoastGlide(C->therr,C->werr,
             C->wc,C->amax,C->vmax,alpha);
          for(i=0;i<3;i++) AC->IdealTrq[i] = AC->MOI[i][i]*alpha[i];
-         
-         for(Ig=0;Ig<AC->Ng;Ig++) {
-            G = &AC->G[Ig];
-            GC = &AC->G[Ig].GCmd;
-            for(i=0;i<G->RotDOF;i++) {
-               GC->AngRate[i] = -G->AngGain[i]*(G->Ang[i] - GC->Ang[i]);
-               GC->AngRate[i] = Limit(GC->AngRate[i],-G->MaxAngRate[i],G->MaxAngRate[i]);
-            }
-         }
       }
 
 }
@@ -1370,7 +1334,7 @@ void MomBiasFSW(struct SCType *S)
       }
 }
 /**********************************************************************/
-/* SC_Aura is a two-body three-axis stabilized S/C                */
+/* SC_Aura is a three-body three-axis stabilized S/C                */
 void ThreeAxisFSW(struct SCType *S)
 {
       double wln[3],CRN[3][3];
@@ -1821,310 +1785,6 @@ void SandboxFSW(struct SCType *S)
       //for(i=0;i<3;i++) AC->Whl[i].Tcmd = -C->Tcmd[i];
 }
 /**********************************************************************/
-void LegPartials(struct SCType *S, long Il, double J[3][3])
-{
-      struct JointType *Hip,*Knee;
-      double alpha,ca,sa,c1,s1,c2,s2,c3,s3,l1,l2;
-      
-      Hip = &S->G[Il];
-      Knee = &S->G[Il+6];
-      
-      alpha = (60.0*((double) Il)+30.0)*D2R;
-      ca = cos(alpha);
-      sa = sin(alpha);
-      c1 = cos(Hip->Ang[0]);
-      s1 = sin(Hip->Ang[0]);
-      c2 = cos(Hip->Ang[1]);
-      s2 = sin(Hip->Ang[1]);
-      c3 = cos(Knee->Ang[0]);
-      s3 = sin(Knee->Ang[0]);
-      l1 = 0.5;
-      l2 = 0.5;
-      
-      J[0][0] = c1*(-l1*c2*sa+l2*(c2*s3*sa+c3*s2*sa))
-                   +s1*(-l1*c2*ca-l2*(-c2*ca*s3-c3*ca*s2));
-      J[0][1] = l2*c2*(-c1*c3*ca+c3*s1*sa)
-                   +s2*(-l1*(c1*ca-s1*sa)-l2*(-c1*ca*s3+s1*s3*sa));
-      J[0][2] = l2*(c3*(-c1*c2*ca+c2*s1*sa)-s3*(-c1*ca*s2+s1*s2*sa));
-      
-      J[1][0] = c1*(l1*c2*ca+l2*(-c2*ca*s3-c3*ca*s2))
-                   +s1*(-l1*c2*sa-l2*(-c2*s3*sa-c3*s2*sa));
-      J[1][1] = l2*c2*(-c1*c3*sa-c3*ca*s1)
-                  +s2*(-l1*(c1*sa+ca*s1)-l2*(-c1*s3*sa-ca*s1*s3));
-      J[1][2] = l2*(c3*(-c1*c2*sa-c2*ca*s1)-s3*(-c1*s2*sa-ca*s1*s2));
-      
-      J[2][0] = 0.0;
-      J[2][1] = l2*c3*s2+c2*(-l1+l2*s3);
-      J[2][2] = l2*(c2*s3+c3*s2);
-}
-/**********************************************************************/
-void HexapodFSW(struct SCType *S)
-{
-      struct AcType *AC;
-      struct BodyType *B;
-      struct RegionType *R;
-      struct AcJointType *Hip,*Knee;
-      struct CmdType *HipCmd,*KneeCmd;
-      
-      double PosCmd[3],VelCmd[3];
-      double YawCmd,PitchCmd,RollCmd;
-      double PosRR[3],VelRR[3],CBN[3][3],CBR[3][3];
-      double Roll,Pitch,Yaw;
-      double StridePeriod = 5.0;
-      double StrideAmp = 0.25;
-      double MaxSpd = 4.0*StrideAmp/StridePeriod;
-      double StrideFrac,Phase;
-      double alpha,ca,sa;
-      double c1,s1,c2,s2,c3,s3;
-      double J[3][3],Jinv[3][3];
-      double RestFootPos[3];
-      double PosFootCmd[3];
-      double PosFootB[3];
-      double th[3],dp[3],dth[3];
-      static double Krx,Kpx,Kra,Kpa;
-      static double wx,wy;
-      double r = 0.5;
-      double l1 = 0.5;
-      double l2 = 0.5;
-      double YawErr,PosErrR[3],VelErrR[3];
-      double PosErrB[3],MagPosErr,SpdCmd,YawRateCmd;
-      double phi,TurnRad;
-      
-      long i,Il;
-      static long Init = 1;
-      
-      AC = &S->AC;
-      B = &S->B[0];
-      
-      if (Init) {
-         Init = 0;
-         FindPDGains(S->mass,0.2*TwoPi,1.0,&Krx,&Kpx);
-         FindPDGains(S->I[2][2],0.2*TwoPi,0.7,&Kra,&Kpa);
-         wx = TwoPi/300.0;
-         wy = TwoPi/150.0;
-      }
-      
-/* .. Position, Orientation in Region */
-      R = &Rgn[Orb[S->RefOrb].Region];
-      MxV(R->CN,S->PosR,PosRR);
-      MxV(R->CN,S->VelR,VelRR);
-      Q2C(B->qn,CBN);
-      MxMT(CBN,R->CN,CBR);
-      C2A(321,CBR,&Yaw,&Pitch,&Roll);
-      
-/* .. Generate position and attitude commands from path */
-      
-      PosCmd[0] =  20.0*sin(wx*SimTime);
-      PosCmd[1] =  10.0*sin(wy*SimTime);
-      VelCmd[0] =  20.0*wx*cos(wx*SimTime);
-      VelCmd[1] =  10.0*wy*cos(wy*SimTime);
-      
-      PosCmd[2] = 0.5;
-      VelCmd[2] = 0.0;
-      PitchCmd = 0.0;
-      RollCmd = 0.0;
-      
-/* .. Position, attitude errors */
-      for(i=0;i<3;i++) {
-         PosErrR[i] = PosRR[i] - PosCmd[i]; 
-         VelErrR[i] = VelRR[i] - VelCmd[i];
-      }
-      MxV(CBR,PosErrR,PosErrB);
-      MagPosErr = MAGV(PosErrB);
-      if (MagPosErr > 2.0) {
-         YawCmd = atan2(-PosErrR[1],-PosErrR[0]);
-         YawErr = Yaw - YawCmd;
-         while (YawErr < -Pi) YawErr += TwoPi;
-         while (YawErr > Pi) YawErr -= TwoPi;
-         YawRateCmd = Limit(-0.5*YawErr,-0.1,0.1);
-         if (fabs(YawErr) > 0.25) SpdCmd = 0.1*MaxSpd;
-         else SpdCmd = MaxSpd;
-      }
-      else {
-         YawCmd = atan2(VelCmd[1],VelCmd[0]);
-         YawErr = Yaw - YawCmd + 0.2*PosErrB[1]/MagPosErr;
-         while (YawErr < -Pi) YawErr += TwoPi;
-         while (YawErr > Pi) YawErr -= TwoPi;
-         YawRateCmd = Limit(-0.5*YawErr,-0.1,0.1);
-         SpdCmd = MAGV(VelCmd) - 0.5*PosErrB[0];
-      }
-      SpdCmd = Limit(SpdCmd,-MaxSpd,MaxSpd);
-      
-/* .. Leg position commands (in Body frame) */
-      if (SimTime < 3.0) {
-         for(Il=0;Il<6;Il++) {
-            Hip = &AC->G[Il];
-            Knee = &AC->G[Il+6];
-            HipCmd = &Hip->GCmd;
-            KneeCmd = &Knee->GCmd;
-            HipCmd->Ang[0] = 0.0;
-            HipCmd->Ang[1] = 0.0;
-            KneeCmd->Ang[0] = 0.0;
-            HipCmd->AngRate[0] = 0.0;
-            HipCmd->AngRate[1] = 0.0;
-            KneeCmd->AngRate[0] = 0.0;  
-         }
-      }
-      else {
-         StrideFrac = fmod(SimTime,StridePeriod)/StridePeriod;
-         for(Il=0;Il<6;Il++) {
-            Hip = &AC->G[Il];
-            Knee = &AC->G[Il+6];
-            HipCmd = &Hip->GCmd;
-            KneeCmd = &Knee->GCmd;
-            Phase = TwoPi*StrideFrac;
-            if (Il%2) Phase += Pi;
-            alpha = (60.0*((double) Il)+30.0)*D2R;
-            ca = cos(alpha);
-            sa = sin(alpha);
-            c1 = cos(Hip->Ang[0]);
-            s1 = sin(Hip->Ang[0]);
-            c2 = cos(Hip->Ang[1]);
-            s2 = sin(Hip->Ang[1]);
-            c3 = cos(Knee->Ang[0]);
-            s3 = sin(Knee->Ang[0]);
-            PosFootB[0] = r*ca + l1*c2*(c1*ca-s1*sa) 
-               + l2*((s1*sa-c1*ca)*(s2*c3+c2*s3));
-            PosFootB[1] = r*sa + l1*c2*(c1*sa+s1*ca)
-               - l2*((c1*sa+s1*ca)*(c2*s3+c3*s2));
-            PosFootB[2] = -l1*s2+l2*(s2*s3-c2*c3);
-            RestFootPos[0] = 1.0*ca;
-            RestFootPos[1] = 1.0*sa;
-            RestFootPos[2] = -0.4;
-            /* Walk with steering */
-            if (fabs(YawRateCmd) > SpdCmd/100.0) { /* Coordinated turn */
-               TurnRad = SpdCmd/YawRateCmd;
-               if (fabs(TurnRad) > 1.0) {
-                  phi = StrideAmp/fabs(TurnRad)*cos(Phase);
-                  phi *= signum(YawRateCmd)*fabs(SpdCmd)/MaxSpd;            
-               }
-               else {
-                  phi = StrideAmp*cos(Phase)*signum(YawRateCmd);
-               }
-               PosFootCmd[0] =  RestFootPos[0]*cos(phi)-(RestFootPos[1]-TurnRad)*sin(phi);
-               PosFootCmd[1] =  RestFootPos[0]*sin(phi)+(RestFootPos[1]-TurnRad)*cos(phi)+TurnRad;
-               PosFootCmd[2] =  RestFootPos[2];
-               if (sin(Phase)<0.0) PosFootCmd[2] -= StrideAmp*sin(Phase);
-            }
-            else { /* Walk straight */
-               PosFootCmd[0] = RestFootPos[0];
-               PosFootCmd[1] = RestFootPos[1];
-               PosFootCmd[2] = RestFootPos[2];
-               if (sin(Phase) > 0.0) { /* Foot Down */
-                  PosFootCmd[0] += SpdCmd*cos(Phase);
-               }
-               else { /* Foot Up */
-                  PosFootCmd[0] += SpdCmd*cos(Phase);
-                  PosFootCmd[2] -= StrideAmp*sin(Phase);
-               }
-            }
-      
-            /* Foot Position to Joint Angles */
-            LegPartials(S,Il,J);
-            MINV3(J,Jinv);
-            th[0] = Hip->Ang[0];
-            th[1] = Hip->Ang[1];
-            th[2] = Knee->Ang[0];
-            for(i=0;i<3;i++) dp[i] = PosFootB[i] - PosFootCmd[i];
-            MxV(Jinv,dp,dth);
-            HipCmd->Ang[0] -= 0.9*dth[0];
-            HipCmd->Ang[1] -= 0.9*dth[1];
-            KneeCmd->Ang[0] -= 0.9*dth[2];
-            HipCmd->AngRate[0] = -2.0*(Hip->Ang[0] - HipCmd->Ang[0]);
-            HipCmd->AngRate[1] = -2.0*(Hip->Ang[1] - HipCmd->Ang[1]);
-            KneeCmd->AngRate[0] = -2.0*(Knee->Ang[0] - KneeCmd->Ang[0]);  
-         }
-      }
-
-/* .. PD Control */
-#if 0
-      YawError = Yaw - YawCmd;
-      while (YawError > Pi) {
-         YawError -= TwoPi;
-      }
-      while (YawError < -Pi) {
-         YawError += TwoPi;
-      }
-      
-      for(i=0;i<3;i++) {
-         FcmdR[i] = -Krx*VelRR[i] - Kpx*(PosRR[i] - PosCmd[i]);
-         Tcmd[i] = -Kra*B->wn[i];
-      }
-      Tcmd[0] -= Kpa*(Roll-RollCmd);
-      Tcmd[1] -= Kpa*(Pitch-PitchCmd);
-      Tcmd[2] -= Kpa*YawError;
-      MxV(CBR,FcmdR,FcmdB);
-#endif
-}
-/**********************************************************************/
-/* Lunar Comm Demonstration                                           */
-void LunarCommFSW(struct SCType *S)
-{
-      struct AcType *AC;
-      double CLN[3][3],CRN[3][3],qrn[4],wln[3];
-      double CRL[3][3] = {{ 1.0, 0.0, 0.0}, 
-                          { 0.0, 1.0, 0.0},
-                          { 0.0, 0.0, 1.0}}; 
-      static double Kr[3],Kp[3];
-      double werr[3],therr[3],Tcmd[3];
-      double AngErr[2];
-      static double IntgErr[2] = {0.0,0.0};
-      double GndPosN[3],GndPosH[3],ViewAxisN[3],ViewAxisB[3],GimCmd[3];
-      double Zvec[3] = {0.0,0.0,1.0};
-      long i;
-      static long Init = 1;
-
-      AC = &S->AC;
-
-      if (Init) {
-         Init = 0;
-         for(i=0;i<3;i++) {
-            FindPDGains(AC->MOI[i][i],0.1*TwoPi,0.7,&Kr[i],&Kp[i]);
-         }
-      }
-
-/* .. Form attitude error signals */
-      FindCLN(AC->PosN,AC->VelN,CLN,wln);
-      MxM(CRL,CLN,CRN);
-      C2Q(CRN,qrn);
-      QxQT(AC->qbn,qrn,AC->qbr);
-      //for(i=0;i<4;i++) AC->qbr[i] = AC->qbn[i];
-      RECTIFYQ(AC->qbr);
-      for(i=0;i<3;i++) {
-         therr[i] = Limit(2.0*AC->qbr[i],-0.01,0.01);
-         werr[i] = AC->wbn[i] - wln[i];
-      }
-
-/* .. Closed-loop attitude control */
-      for(i=0;i<3;i++) {
-         Tcmd[i] = -Kr[i]*werr[i]-Kp[i]*therr[i];
-      }
-      
-/* .. Point Antenna */
-      MTxV(World[EARTH].CWN,GroundStation[2].PosW,GndPosN); /* White Sands */
-      if (Orb[S->RefOrb].World == LUNA) {
-         for(i=0;i<3;i++) GndPosN[i] -= World[LUNA].eph.PosN[i];
-         MTxV(World[EARTH].CNH,GndPosN,GndPosH);
-         MxV(World[LUNA].CNH,GndPosH,GndPosN);  /* Luna N */
-      }
-      for(i=0;i<3;i++) ViewAxisN[i] = GndPosN[i] - S->PosN[i];
-      UNITV(ViewAxisN);
-      MxV(S->B[0].CN,ViewAxisN,ViewAxisB);
-      PointGimbalToTarget(12,S->G[0].CGiBi,S->G[0].CBoGo,ViewAxisB,Zvec,GimCmd);
-      for(i=0;i<2;i++) {
-         AC->G[0].GCmd.Ang[i] = GimCmd[i];
-         AngErr[i] = AC->G[0].Ang[i] - AC->G[0].GCmd.Ang[i];
-         AC->G[0].GCmd.AngRate[i] = -50.0*D2R*AngErr[i] - 10.0*D2R*IntgErr[i];
-         AC->G[0].GCmd.AngRate[i] = Limit(AC->G[0].GCmd.AngRate[i],
-            -0.5*D2R,0.5*D2R);
-         IntgErr[i] += AngErr[i]*AC->DT;
-         IntgErr[i] = Limit(IntgErr[i],-0.1,0.1);
-      }
-
-      for(i=0;i<3;i++) AC->IdealTrq[i] = Tcmd[i];
-      //for(i=0;i<3;i++) AC->Whl[i].Tcmd = -C->Tcmd[i];
-}
-/**********************************************************************/
 /*  This function is called at the simulation rate.  Sub-sampling of  */
 /*  control loops is managed by FswSampleCounter.                     */
 /*  Mode handling, command generation, error determination, feedback  */
@@ -2168,12 +1828,6 @@ void FlightSoftWare(struct SCType *S)
                break;
             case THR_FSW:
                ThrFSW(S);
-               break;
-            case HEXAPOD_FSW:
-               HexapodFSW(S);
-               break;
-            case LUNARCOMM_FSW:
-               LunarCommFSW(S);
                break;
             case CFS_FSW:
                #ifdef _AC_STANDALONE_

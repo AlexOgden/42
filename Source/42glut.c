@@ -27,20 +27,20 @@
 */
 
 /*********************************************************************/
-void SetupViewVolume(struct POVType *POV)
+void SetupViewVolume(int width, int height)
 {
-      glViewport(0,0,POV->PixWidth,POV->PixHeight);
+      glViewport(0,0,width,height);
 
-      POV->AR = ((double) POV->PixWidth)/((double) POV->PixHeight);
-      POV->AngHeight = POV->Near*tan(0.5*POV->Angle*D2R);
-      POV->AngWidth = POV->AR*POV->AngHeight;
+      POV.AR = ((double) width)/((double) height);
+      POV.Height = POV.Near*tan(0.5*POV.Angle*D2R);
+      POV.Width = POV.AR*POV.Height;
       glMatrixMode(GL_PROJECTION);
       glLoadIdentity();
-      gluPerspective(POV->Angle, POV->AR, POV->Near, POV->Far);
+      gluPerspective(POV.Angle, POV.AR, POV.Near, POV.Far);
       glMatrixMode(GL_MODELVIEW);
-      POV->CosFov = cos(1.2*sqrt(POV->AngWidth*POV->AngWidth+
-                        POV->AngHeight*POV->AngHeight));
-      POV->SinFov = sqrt(1.0-POV->CosFov*POV->CosFov);
+      POV.CosFov = cos(1.2*sqrt(POV.Width*POV.Width+
+                        POV.Height*POV.Height));
+      POV.SinFov = sqrt(1.0-POV.CosFov*POV.CosFov);
 }
 /**********************************************************************/
 void TimerHandler(int value)
@@ -51,12 +51,9 @@ void TimerHandler(int value)
 void Idle(void)
 {
       long MaxCamFrame = 20000;
-      char CamFileName[41];
+      char CamFileName[40];
       long Done = 0;
-      long Isc,Icam;
-      struct SCType *S;
-      struct CameraType *C;
-      
+
       if (PauseFlag) {
          glutSetWindow(CamWindow);
          CamRenderExec();
@@ -80,9 +77,9 @@ void Idle(void)
          glutPostRedisplay();
       }
       else {
-         Eye.w[0] = 0.0;
-         Eye.w[1] = 0.0;
-         Eye.w[2] = 0.0;
+         POV.w[0] = 0.0;
+         POV.w[1] = 0.0;
+         POV.w[2] = 0.0;
          if (TimerHasExpired) {
             TimerHasExpired = 0;
             glutTimerFunc(TimerDuration,TimerHandler,0);
@@ -106,19 +103,6 @@ void Idle(void)
                   DrawUnitSphere();
                   glutSwapBuffers();
                }
-               
-               for(Isc=0;Isc<Nsc;Isc++) {
-                  S = &SC[Isc];
-                  for(Icam=0;Icam<S->Ncam;Icam++) {
-                     C = &S->Cam[Icam];
-                     if (C->Display) {
-                        glutSetWindow(C->Window);
-                        CurrentCameraPOV = &C->POV;
-                        DrawCamera();
-                        glutSwapBuffers();
-                     }
-                  }
-               }
 
                glutPostRedisplay();
                if (CaptureCam) {
@@ -126,7 +110,7 @@ void Idle(void)
                   sprintf(CamFileName,"CamFrame%05ld.ppm",CamFrame);
                   glutSetWindow(CamWindow);
                   CaptureScreenToPpm("./Screenshots/",
-                     CamFileName,Eye.PixHeight,Eye.PixWidth);
+                     CamFileName,CamHeight,CamWidth);
                   printf("Captured Cam Frame %ld\n",CamFrame);
                   if (CamFrame > MaxCamFrame) CamFrame = 0;
                }
@@ -185,26 +169,27 @@ void AsciiKeyHandler(unsigned char CharCode, int x, int y)
 
       if (Refresh) {
          Refresh = FALSE;
-         SetPovOrientation(&Eye);
+         SetPovOrientation();
       }
 }
 /**********************************************************************/
 void SpecialKeyHandler(int key, int x, int y)
 {
+
       switch(key) {
          case GLUT_KEY_UP :
             break;
          case GLUT_KEY_DOWN :
             break;
          case GLUT_KEY_LEFT :
-            Eye.Angle *= 0.625;
-            if (Eye.Angle < 1.0) Eye.Angle = 1.0;
-            SetupViewVolume(&Eye);
+            POV.Angle *= 0.625;
+            if (POV.Angle < 1.0) POV.Angle = 1.0;
+            SetupViewVolume(CamWidth,CamHeight);
             break;
          case GLUT_KEY_RIGHT :
-            Eye.Angle *= 1.6;
-            if (Eye.Angle > 60.0) Eye.Angle = 60.0;
-            SetupViewVolume(&Eye);
+            POV.Angle *= 1.6;
+            if (POV.Angle > 60.0) POV.Angle = 60.0;
+            SetupViewVolume(CamWidth,CamHeight);
             break;
          case GLUT_KEY_PAGE_UP :
             break;
@@ -219,7 +204,7 @@ void SpecialKeyHandler(int key, int x, int y)
          case GLUT_KEY_F1 :
             glutSetWindow(CamWindow);
             CaptureScreenToPpm("./Screenshots/",
-               "CamSnap.ppm",Eye.PixHeight,Eye.PixWidth);
+               "CamSnap.ppm",CamHeight,CamWidth);
             break;
          case GLUT_KEY_F2 :
             if (MapWindowExists) {
@@ -233,7 +218,6 @@ void SpecialKeyHandler(int key, int x, int y)
 /**********************************************************************/
 void CamMouseButtonHandler(int Button, int State, int x, int y)
 {
-      struct POVType *POV = &Eye;
       static long Refresh = FALSE;
       long Pick,i;
 
@@ -255,13 +239,13 @@ void CamMouseButtonHandler(int Button, int State, int x, int y)
                if (Pick < 3) {
                   for(i=0;i<3;i++) PovWidget.Spot[i].Selected = 0;
                   PovWidget.Spot[Pick].Selected = 1;
-                  POV->Mode = TRACK_HOST+Pick;
+                  POV.Mode = TRACK_HOST+Pick;
                   Refresh = TRUE;
                }
                else if (Pick < 8) {
                   for(i=0;i<5;i++) PovWidget.Spot[3+i].Selected = 0;
                   PovWidget.Spot[Pick].Selected = 1;
-                  POV->Frame = FRAME_N+(Pick-3);
+                  POV.Frame = FRAME_N+(Pick-3);
                   Refresh = TRUE;
                }
                else if (Pick < 11) {
@@ -269,76 +253,76 @@ void CamMouseButtonHandler(int Button, int State, int x, int y)
                   if (Pick == 8) {
                      PovWidget.Spot[8].Selected = 1;
                      PovWidget.Spot[13].Selected = 1;
-                     if (POV->BoreAxis == POS_X) {
-                        POV->BoreAxis = NEG_X;
-                        POV->UpAxis = NEG_Z;
+                     if (POV.BoreAxis == POS_X) {
+                        POV.BoreAxis = NEG_X;
+                        POV.UpAxis = NEG_Z;
                      }
                      else {
-                        POV->BoreAxis = POS_X;
-                        POV->UpAxis = POS_Z;
+                        POV.BoreAxis = POS_X;
+                        POV.UpAxis = POS_Z;
                      }
                      Refresh = TRUE;
                   }
                   else if (Pick == 9) {
                      PovWidget.Spot[9].Selected = 1;
                      PovWidget.Spot[11].Selected = 1;
-                     if (POV->BoreAxis == POS_Y) {
-                        POV->BoreAxis = NEG_Y;
-                        POV->UpAxis = NEG_X;
+                     if (POV.BoreAxis == POS_Y) {
+                        POV.BoreAxis = NEG_Y;
+                        POV.UpAxis = NEG_X;
                      }
                      else {
-                        POV->BoreAxis = POS_Y;
-                        POV->UpAxis = POS_X;
+                        POV.BoreAxis = POS_Y;
+                        POV.UpAxis = POS_X;
                      }
                      Refresh = TRUE;
                   }
                   else if (Pick == 10) {
                      PovWidget.Spot[10].Selected = 1;
                      PovWidget.Spot[12].Selected = 1;
-                     if (POV->BoreAxis == POS_Z) {
-                        POV->BoreAxis = NEG_Z;
-                        POV->UpAxis = NEG_Y;
+                     if (POV.BoreAxis == POS_Z) {
+                        POV.BoreAxis = NEG_Z;
+                        POV.UpAxis = NEG_Y;
                      }
                      else {
-                        POV->BoreAxis = POS_Z;
-                        POV->UpAxis = POS_Y;
+                        POV.BoreAxis = POS_Z;
+                        POV.UpAxis = POS_Y;
                      }
                      Refresh = TRUE;
                   }
                }
                else if (Pick == 11) {
-                  if (POV->BoreAxis != POS_X && POV->BoreAxis != NEG_X) {
+                  if (POV.BoreAxis != POS_X && POV.BoreAxis != NEG_X) {
                      PovWidget.Spot[11].Selected = 1;
                      PovWidget.Spot[12].Selected = 0;
                      PovWidget.Spot[13].Selected = 0;
-                     if (POV->UpAxis == POS_X)
-                        POV->UpAxis = NEG_X;
+                     if (POV.UpAxis == POS_X)
+                        POV.UpAxis = NEG_X;
                      else
-                        POV->UpAxis = POS_X;
+                        POV.UpAxis = POS_X;
                      Refresh = TRUE;
                   }
                }
                else if (Pick == 12) {
-                  if (POV->BoreAxis != POS_Y && POV->BoreAxis != NEG_Y) {
+                  if (POV.BoreAxis != POS_Y && POV.BoreAxis != NEG_Y) {
                      PovWidget.Spot[11].Selected = 0;
                      PovWidget.Spot[12].Selected = 1;
                      PovWidget.Spot[13].Selected = 0;
-                     if (POV->UpAxis == POS_Y)
-                        POV->UpAxis = NEG_Y;
+                     if (POV.UpAxis == POS_Y)
+                        POV.UpAxis = NEG_Y;
                      else
-                        POV->UpAxis = POS_Y;
+                        POV.UpAxis = POS_Y;
                      Refresh = TRUE;
                   }
                }
                else if (Pick == 13) {
-                  if (POV->BoreAxis != POS_Z && POV->BoreAxis != NEG_Z) {
+                  if (POV.BoreAxis != POS_Z && POV.BoreAxis != NEG_Z) {
                      PovWidget.Spot[11].Selected = 0;
                      PovWidget.Spot[12].Selected = 0;
                      PovWidget.Spot[13].Selected = 1;
-                     if (POV->UpAxis == POS_Z)
-                        POV->UpAxis = NEG_Z;
+                     if (POV.UpAxis == POS_Z)
+                        POV.UpAxis = NEG_Z;
                      else
-                        POV->UpAxis = POS_Z;
+                        POV.UpAxis = POS_Z;
                      Refresh = TRUE;
                   }
                }
@@ -358,70 +342,70 @@ void CamMouseButtonHandler(int Button, int State, int x, int y)
                if (Pick < 5) {
                   for(i=0;i<5;i++) HostWidget.Spot[i].Selected = 0;
                   HostWidget.Spot[Pick].Selected = 1;
-                  POV->Host.Type = Pick;
+                  POV.Host.Type = Pick;
                }
                else if (Pick == 5) {
-                  if (POV->Host.Type == TARGET_WORLD) {
+                  if (POV.Host.Type == TARGET_WORLD) {
                      do {
-                        POV->Host.World = (POV->Host.World+NWORLD-1)%NWORLD;
-                     } while(!World[POV->Host.World].Exists);
+                        POV.Host.World = (POV.Host.World+NWORLD-1)%NWORLD;
+                     } while(!World[POV.Host.World].Exists);
                   }
-                  else if (POV->Host.Type == TARGET_REFORB ||
-                           POV->Host.Type == TARGET_FRM) {
-                     POV->Host.RefOrb = (POV->Host.RefOrb+Norb-1)%Norb;
-                     POV->Host.World = Orb[POV->Host.RefOrb].World;
-                     while(!(SC[POV->Host.SC].Exists &&
-                             SC[POV->Host.SC].RefOrb ==
-                             POV->Host.RefOrb)) {
-                        POV->Host.SC = (POV->Host.SC+1)%Nsc;
+                  else if (POV.Host.Type == TARGET_REFORB ||
+                           POV.Host.Type == TARGET_FRM) {
+                     POV.Host.RefOrb = (POV.Host.RefOrb+Norb-1)%Norb;
+                     POV.Host.World = Orb[POV.Host.RefOrb].World;
+                     while(!(SC[POV.Host.SC].Exists &&
+                             SC[POV.Host.SC].RefOrb ==
+                             POV.Host.RefOrb)) {
+                        POV.Host.SC = (POV.Host.SC+1)%Nsc;
                      };
                   }
-                  else if (POV->Host.Type == TARGET_SC) {
+                  else if (POV.Host.Type == TARGET_SC) {
                      do {
-                        POV->Host.SC = (POV->Host.SC+Nsc-1)%Nsc;
-                     } while(!SC[POV->Host.SC].Exists);
-                     POV->Host.RefOrb = SC[POV->Host.SC].RefOrb;
-                     POV->Host.World = Orb[POV->Host.RefOrb].World;
+                        POV.Host.SC = (POV.Host.SC+Nsc-1)%Nsc;
+                     } while(!SC[POV.Host.SC].Exists);
+                     POV.Host.RefOrb = SC[POV.Host.SC].RefOrb;
+                     POV.Host.World = Orb[POV.Host.RefOrb].World;
                   }
                   else {
-                     POV->Host.Body = (POV->Host.Body+SC[POV->Host.SC].Nb-1)
-                        %SC[POV->Host.SC].Nb;
+                     POV.Host.Body = (POV.Host.Body+SC[POV.Host.SC].Nb-1)
+                        %SC[POV.Host.SC].Nb;
                   }
                }
                else if (Pick == 6) {
-                  if (POV->Host.Type == TARGET_WORLD) {
+                  if (POV.Host.Type == TARGET_WORLD) {
                      do {
-                        POV->Host.World = (POV->Host.World+1)%NWORLD;
-                     } while(!World[POV->Host.World].Exists);
+                        POV.Host.World = (POV.Host.World+1)%NWORLD;
+                     } while(!World[POV.Host.World].Exists);
                   }
-                  else if (POV->Host.Type == TARGET_REFORB ||
-                           POV->Host.Type == TARGET_FRM) {
-                     POV->Host.RefOrb = (POV->Host.RefOrb+1)%Norb;
-                     POV->Host.World = Orb[POV->Host.RefOrb].World;
-                     while(!(SC[POV->Host.SC].Exists &&
-                             SC[POV->Host.SC].RefOrb ==
-                             POV->Host.RefOrb)) {
-                        POV->Host.SC = (POV->Host.SC+1)%Nsc;
+                  else if (POV.Host.Type == TARGET_REFORB ||
+                           POV.Host.Type == TARGET_FRM) {
+                     POV.Host.RefOrb = (POV.Host.RefOrb+1)%Norb;
+                     POV.Host.World = Orb[POV.Host.RefOrb].World;
+                     while(!(SC[POV.Host.SC].Exists &&
+                             SC[POV.Host.SC].RefOrb ==
+                             POV.Host.RefOrb)) {
+                        POV.Host.SC = (POV.Host.SC+1)%Nsc;
                      };
                   }
-                  else if (POV->Host.Type == TARGET_SC) {
+                  else if (POV.Host.Type == TARGET_SC) {
                      do {
-                        POV->Host.SC = (POV->Host.SC+1)%Nsc;
-                     } while(!SC[POV->Host.SC].Exists);
-                     POV->Host.RefOrb = SC[POV->Host.SC].RefOrb;
-                     POV->Host.World = Orb[POV->Host.RefOrb].World;
+                        POV.Host.SC = (POV.Host.SC+1)%Nsc;
+                     } while(!SC[POV.Host.SC].Exists);
+                     POV.Host.RefOrb = SC[POV.Host.SC].RefOrb;
+                     POV.Host.World = Orb[POV.Host.RefOrb].World;
                   }
                   else {
-                     POV->Host.Body = (POV->Host.Body+1)%SC[POV->Host.SC].Nb;
+                     POV.Host.Body = (POV.Host.Body+1)%SC[POV.Host.SC].Nb;
                   }
                }
                else if (Pick == 7) {
-                  POV->Range *= 1.6;
-                  if (POV->Range > 10000.0) POV->Range = 10000.0;
+                  POV.Range *= 1.6;
+                  if (POV.Range > 10000.0) POV.Range = 10000.0;
                }
                else if (Pick == 8) {
-                  POV->Range *= 0.625;
-                  if (POV->Range < 1.0) POV->Range = 1.0;
+                  POV.Range *= 0.625;
+                  if (POV.Range < 1.0) POV.Range = 1.0;
                }
             }
             else if (x >= TargetWidget.xmin && x <= TargetWidget.xmax &&
@@ -439,60 +423,60 @@ void CamMouseButtonHandler(int Button, int State, int x, int y)
                if (Pick < 5) {
                   for(i=0;i<5;i++) TargetWidget.Spot[i].Selected = 0;
                   TargetWidget.Spot[Pick].Selected = 1;
-                  POV->Target.Type = Pick;
+                  POV.Target.Type = Pick;
                }
                else if (Pick == 5) {
-                  if (POV->Target.Type == TARGET_WORLD) {
+                  if (POV.Target.Type == TARGET_WORLD) {
                      do {
-                        POV->Target.World = (POV->Target.World+NWORLD-1)%NWORLD;
-                     } while(!World[POV->Target.World].Exists);
+                        POV.Target.World = (POV.Target.World+NWORLD-1)%NWORLD;
+                     } while(!World[POV.Target.World].Exists);
                   }
-                  else if (POV->Target.Type == TARGET_REFORB ||
-                           POV->Target.Type == TARGET_FRM) {
-                     POV->Target.RefOrb = (POV->Target.RefOrb+Norb-1)%Norb;
-                     POV->Target.World = Orb[POV->Target.RefOrb].World;
+                  else if (POV.Target.Type == TARGET_REFORB ||
+                           POV.Target.Type == TARGET_FRM) {
+                     POV.Target.RefOrb = (POV.Target.RefOrb+Norb-1)%Norb;
+                     POV.Target.World = Orb[POV.Target.RefOrb].World;
                   }
-                  else if (POV->Target.Type == TARGET_SC) {
+                  else if (POV.Target.Type == TARGET_SC) {
                      do {
-                        POV->Target.SC = (POV->Target.SC+Nsc-1)%Nsc;
-                     } while(!SC[POV->Target.SC].Exists);
-                     POV->Target.RefOrb = SC[POV->Target.SC].RefOrb;
-                     POV->Target.World = Orb[POV->Target.RefOrb].World;
+                        POV.Target.SC = (POV.Target.SC+Nsc-1)%Nsc;
+                     } while(!SC[POV.Target.SC].Exists);
+                     POV.Target.RefOrb = SC[POV.Target.SC].RefOrb;
+                     POV.Target.World = Orb[POV.Target.RefOrb].World;
                   }
                   else {
-                     POV->Target.Body = (POV->Target.Body+SC[POV->Target.SC].Nb-1)
-                        %SC[POV->Target.SC].Nb;
+                     POV.Target.Body = (POV.Target.Body+SC[POV.Target.SC].Nb-1)
+                        %SC[POV.Target.SC].Nb;
                   }
                }
                else if (Pick == 6) {
-                  if (POV->Target.Type == TARGET_WORLD) {
+                  if (POV.Target.Type == TARGET_WORLD) {
                      do {
-                        POV->Target.World = (POV->Target.World+1)%NWORLD;
-                     } while(!World[POV->Target.World].Exists);
+                        POV.Target.World = (POV.Target.World+1)%NWORLD;
+                     } while(!World[POV.Target.World].Exists);
                   }
-                  else if (POV->Target.Type == TARGET_REFORB ||
-                           POV->Target.Type == TARGET_FRM) {
-                     POV->Target.RefOrb = (POV->Target.RefOrb+1)%Norb;
-                     POV->Target.World = Orb[POV->Target.RefOrb].World;
+                  else if (POV.Target.Type == TARGET_REFORB ||
+                           POV.Target.Type == TARGET_FRM) {
+                     POV.Target.RefOrb = (POV.Target.RefOrb+1)%Norb;
+                     POV.Target.World = Orb[POV.Target.RefOrb].World;
                   }
-                  else if (POV->Target.Type == TARGET_SC) {
+                  else if (POV.Target.Type == TARGET_SC) {
                      do {
-                        POV->Target.SC = (POV->Target.SC+1)%Nsc;
-                     } while(!SC[POV->Target.SC].Exists);
-                     POV->Target.RefOrb = SC[POV->Target.SC].RefOrb;
-                     POV->Target.World = Orb[POV->Target.RefOrb].World;
+                        POV.Target.SC = (POV.Target.SC+1)%Nsc;
+                     } while(!SC[POV.Target.SC].Exists);
+                     POV.Target.RefOrb = SC[POV.Target.SC].RefOrb;
+                     POV.Target.World = Orb[POV.Target.RefOrb].World;
                   }
                   else {
-                     POV->Target.Body = (POV->Target.Body+1)%SC[POV->Target.SC].Nb;
+                     POV.Target.Body = (POV.Target.Body+1)%SC[POV.Target.SC].Nb;
                   }
                }
                else if (Pick == 7) {
-                  POV->Range *= 1.6;
-                  if (POV->Range > 10000.0) POV->Range = 10000.0;
+                  POV.Range *= 1.6;
+                  if (POV.Range > 10000.0) POV.Range = 10000.0;
                }
                else if (Pick == 8) {
-                  POV->Range *= 0.625;
-                  if (POV->Range < 1.0) POV->Range = 1.0;
+                  POV.Range *= 0.625;
+                  if (POV.Range < 1.0) POV.Range = 1.0;
                }
             }
             else if (x >= CamShowWidget.xmin && x <= CamShowWidget.xmax &&
@@ -527,25 +511,23 @@ void CamMouseButtonHandler(int Button, int State, int x, int y)
             /* printf("Mouse Up\n"); */
             if (PausedByMouse) PauseFlag = 0;
             PausedByMouse = 0;
-            POV->w[1] = 0.0;
-            POV->w[0] = 0.0;
+            POV.w[1] = 0.0;
+            POV.w[0] = 0.0;
          }
       }
 
       if (Refresh) {
          Refresh = FALSE;
-         SetPovOrientation(POV);
+         SetPovOrientation();
       }
 }
 /**********************************************************************/
 void CamMouseActiveMotionHandler(int x, int y)
 {
-      struct POVType *POV = &Eye;
-      
-      if (POV->Mode == TRACK_HOST) {
-         POV->w[1] = MouseScaleFactor * (double) (x-MouseClickX);
-         POV->w[0] = MouseScaleFactor * (double) (y-MouseClickY);
-         POV->w[2] = 0.0;
+      if (POV.Mode == TRACK_HOST) {
+         POV.w[1] = MouseScaleFactor * (double) (x-MouseClickX);
+         POV.w[0] = MouseScaleFactor * (double) (y-MouseClickY);
+         POV.w[2] = 0.0;
       }
 }
 /**********************************************************************/
@@ -901,9 +883,9 @@ void SphereMouseButtonHandler(int Button, int State, int x, int y)
 /**********************************************************************/
 void CamReshapeHandler(int width, int height)
 {
-      Eye.PixWidth = width;
-      Eye.PixHeight = height;
-      SetupViewVolume(&Eye);
+      CamWidth = width;
+      CamHeight = height;
+      SetupViewVolume(CamWidth,CamHeight);
 }
 /**********************************************************************/
 void MapReshapeHandler(int width, int height)
@@ -950,12 +932,11 @@ void SphereReshapeHandler(int width, int height)
 /*********************************************************************/
 void InitCamWindow(void)
 {
-      struct POVType *POV = &Eye;
       int GlutParm;
 
-      glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE);
+      glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
       //glutInitDisplayString("rgba double depth hidpi");
-      glutInitWindowSize(Eye.PixWidth,Eye.PixHeight);
+      glutInitWindowSize(CamWidth,CamHeight);
       CamWindow = glutCreateWindow(CamTitle);
       #if (defined(GLEW_BUILD) || defined(GLEW_STATIC))
       if (GLEW_OK != glewInit()) {
@@ -979,8 +960,6 @@ void InitCamWindow(void)
       glPolygonMode(GL_FRONT, GL_FILL);
       /*glPolygonMode(GL_FRONT, GL_LINE);*/
       glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-      
-      glEnable(GL_MULTISAMPLE);
 
 /* .. Create light */
       glEnable(GL_LIGHTING);
@@ -1002,14 +981,13 @@ void InitCamWindow(void)
       /*glutSetCursor(GLUT_CURSOR_INHERIT);*/
 
 /* .. Set up view volume */
-      POV->Near = 1.0;
-      POV->Far = 50.0E3;  /* m */
-      SkyDistance = 0.5*POV->Far;
+      POV.Near = 1.0;
+      POV.Far = 50.0E3;  /* m */
+      SkyDistance = 0.5*POV.Far;
 
-      Font8x11[CAM_FONT] = LoadFont8x11();
-      Font8x13[CAM_FONT] = LoadFont8x13();
-      InitCamWidgets(POV);
-      SetupViewVolume(POV);
+      Font8x11Offset = LoadFont8x11();
+      InitCamWidgets();
+      SetupViewVolume(CamWidth,CamHeight);
       LoadShadowMapFBO();
       #ifdef _USE_SHADERS_
          printf("Loading Cam Shaders\n");
@@ -1019,6 +997,7 @@ void InitCamWindow(void)
       LoadCamTextures();
       printf("Loading 3D Noise\n");
       Load3DNoise();
+      VREnabled = FALSE;
       SeeThruPassNeeded = FALSE;
       printf("Loading Cam Lists\n");
       LoadCamLists();
@@ -1058,7 +1037,7 @@ void InitMapWindow(void)
       glutInitWindowSize(MapWidth,MapHeight);
       MapWindow = glutCreateWindow(MapTitle);
       glutSetWindow(MapWindow);
-      glutPositionWindow(Eye.PixWidth,30);
+      glutPositionWindow(CamWidth,30);
 
 /* .. Set Callback Functions */
       glutDisplayFunc(DrawMap);
@@ -1077,9 +1056,6 @@ void InitMapWindow(void)
       glLightfv(GL_LIGHT0,GL_DIFFUSE,White);
       glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
       glEnable(GL_BLEND);
-
-      Font8x11[MAP_FONT] = LoadFont8x11();
-      Font8x13[MAP_FONT] = LoadFont8x13();
 
 /* .. Set up view volume */
       glMatrixMode(GL_PROJECTION);
@@ -1167,7 +1143,7 @@ void InitOrreryWindow(void)
       glutInitWindowSize(OrreryWidth,OrreryHeight);
       OrreryWindow = glutCreateWindow(OrreryTitle);
       glutSetWindow(OrreryWindow);
-      glutPositionWindow(Eye.PixWidth,MapHeight+66);
+      glutPositionWindow(CamWidth,MapHeight+66);
 
 /* .. Set Callback Functions */
       glutDisplayFunc(DrawOrrery);
@@ -1177,9 +1153,6 @@ void InitOrreryWindow(void)
       glutMotionFunc(OrreryMouseActiveMotionHandler);
       glutPassiveMotionFunc(OrreryMousePassiveMotionHandler);
       glutReshapeFunc(OrreryReshapeHandler);
-
-      Font8x11[ORRERY_FONT] = LoadFont8x11();
-      Font8x13[ORRERY_FONT] = LoadFont8x13();
 
 /* .. Set GL state variables */
       glClearColor(0.141,0.12,0.27,1.0);
@@ -1231,16 +1204,13 @@ void InitSphereWindow(void)
       glutInitWindowSize(SphereWindowWidth,SphereWindowHeight);
       SphereWindow = glutCreateWindow("42 Unit Sphere Viewer");
       glutSetWindow(SphereWindow);
-      glutPositionWindow(Eye.PixWidth+MapWidth,30);
+      glutPositionWindow(CamWidth+MapWidth,30);
 
       glutDisplayFunc(DrawUnitSphere);
       glutIdleFunc(Idle);
       glutKeyboardFunc(AsciiKeyHandler);
       glutMouseFunc(SphereMouseButtonHandler);
       glutReshapeFunc(SphereReshapeHandler);
-
-      Font8x11[SPHERE_FONT] = LoadFont8x11();
-      Font8x13[SPHERE_FONT] = LoadFont8x13();
 
       glClearColor(0.0,0.0,0.0,1.0);
       glPolygonMode(GL_FRONT,GL_FILL);
@@ -1263,73 +1233,9 @@ void InitSphereWindow(void)
 
       InitSphereWidgets();
 }
-/******************************************************************************/
-/* Sensor camera mounted on an SC                                             */
-void InitCameraWindow(struct CameraType *Cam)
-{
-      struct POVType *POV = &Cam->POV;
-
-      glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-      glutInitWindowSize(POV->PixWidth,POV->PixHeight);
-      Cam->Window = glutCreateWindow(Cam->Title);
-      #if (defined(GLEW_BUILD) || defined(GLEW_STATIC))
-      if (GLEW_OK != glewInit()) {
-         printf("glew failed to initialize in InitCameraWindow\n");
-         exit(1);
-      }
-      #endif
-
-      glutSetWindow(Cam->Window);
-      glutPositionWindow(Cam->PosX,Cam->PosY);
-
-/* .. Set GL state variables */
-      glClearColor(0.0,0.0,0.0,1.0);
-      glFrontFace(GL_CCW);
-      glCullFace(GL_BACK);
-      glEnable(GL_CULL_FACE);
-      glEnable(GL_DEPTH_TEST);
-      glDepthFunc(GL_LEQUAL);
-      glEnable(GL_POINT_SMOOTH);
-      glShadeModel(GL_SMOOTH);
-      glPolygonMode(GL_FRONT, GL_FILL);
-      /*glPolygonMode(GL_FRONT, GL_LINE);*/
-      glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-      
-/* .. Create light */
-      glEnable(GL_LIGHTING);
-      glEnable(GL_LIGHT0);
-      glLightfv(GL_LIGHT0,GL_SPECULAR,SpecularLightColor);
-      glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-      glEnable(GL_BLEND);
-      glEnable(GL_NORMALIZE);
-
-/* .. Set Callback Functions */
-      glutDisplayFunc(DrawCamera);
-      glutIdleFunc(Idle);
-
-/* .. Set up view volume */
-      SkyDistance = 0.5*POV->Far;
-
-      Font8x11[CAM_FONT] = LoadFont8x11();
-      Font8x13[CAM_FONT] = LoadFont8x13();
-      SetupViewVolume(POV);
-      LoadShadowMapFBO();
-      #ifdef _USE_SHADERS_
-         LoadCamShaders();
-      #endif
-      LoadCamTextures();
-      Load3DNoise();
-      SeeThruPassNeeded = FALSE;
-      LoadCamLists();
-
-      ShowWatermark = 0;
-
-      CurrentCameraPOV = POV;
-}
 /*********************************************************************/
 long GuiCmdInterpreter(char CmdLine[512], double *CmdTime)
 {
-      struct POVType *POV = &Eye;
       char response[120];
       char FrameChar;
       double Ang1,Ang2,Ang3;
@@ -1337,16 +1243,16 @@ long GuiCmdInterpreter(char CmdLine[512], double *CmdTime)
       long NewCmdProcessed = FALSE;
       long Ifov;
 
-      if (sscanf(CmdLine,"%lf POV.Host.SC %ld",CmdTime,&POV->Host.SC) == 2) {
+      if (sscanf(CmdLine,"%lf POV.Host.SC %ld",CmdTime,&POV.Host.SC) == 2) {
          NewCmdProcessed = TRUE;
-         POV->Host.RefOrb = SC[POV->Host.SC].RefOrb;
-         POV->Host.World = Orb[POV->Host.RefOrb].World;
+         POV.Host.RefOrb = SC[POV.Host.SC].RefOrb;
+         POV.Host.World = Orb[POV.Host.RefOrb].World;
       }
 
-      if (sscanf(CmdLine,"%lf POV->Host.RefOrb %ld",CmdTime,&POV->Host.RefOrb) == 2) {
+      if (sscanf(CmdLine,"%lf POV.Host.RefOrb %ld",CmdTime,&POV.Host.RefOrb) == 2) {
          NewCmdProcessed = TRUE;
-         POV->Host.Type = TARGET_REFORB;
-         POV->Host.World = Orb[POV->Host.RefOrb].World;
+         POV.Host.Type = TARGET_REFORB;
+         POV.Host.World = Orb[POV.Host.RefOrb].World;
       }
 
       if (sscanf(CmdLine,"%lf CaptureCam %s",CmdTime,response) == 2) {
@@ -1359,7 +1265,7 @@ long GuiCmdInterpreter(char CmdLine[512], double *CmdTime)
          if (DecodeString(response) == TRUE) {
             glutSetWindow(CamWindow);
             CaptureScreenToPpm("./Screenshots/",
-               "CamSnap.ppm",Eye.PixHeight,Eye.PixWidth);
+               "CamSnap.ppm",CamHeight,CamWidth);
          }
       }
 
@@ -1425,36 +1331,36 @@ long GuiCmdInterpreter(char CmdLine[512], double *CmdTime)
       if (sscanf(CmdLine,"%lf GL Output Step = %lf",CmdTime,&DTOUTGL) == 2) {
          NewCmdProcessed = TRUE;
       }
-      if (sscanf(CmdLine,"%lf POV CmdRange = %lf",CmdTime,&POV->CmdRange) == 2) {
+      if (sscanf(CmdLine,"%lf POV CmdRange = %lf",CmdTime,&POV.CmdRange) == 2) {
          NewCmdProcessed = TRUE;
       }
-      if (sscanf(CmdLine,"%lf POV CmdSeq = %ld",CmdTime,&POV->CmdSeq) == 2) {
+      if (sscanf(CmdLine,"%lf POV CmdSeq = %ld",CmdTime,&POV.CmdSeq) == 2) {
          NewCmdProcessed = TRUE;
       }
       if (sscanf(CmdLine,"%lf POV CmdPermute = [%lf %lf %lf; %lf %lf %lf; %lf %lf %lf]",
          CmdTime,
-            &POV->CmdPermute[0][0],&POV->CmdPermute[0][1],&POV->CmdPermute[0][2],
-            &POV->CmdPermute[1][0],&POV->CmdPermute[1][1],&POV->CmdPermute[1][2],
-            &POV->CmdPermute[2][0],&POV->CmdPermute[2][1],&POV->CmdPermute[2][2]) == 10) {
+            &POV.CmdPermute[0][0],&POV.CmdPermute[0][1],&POV.CmdPermute[0][2],
+            &POV.CmdPermute[1][0],&POV.CmdPermute[1][1],&POV.CmdPermute[1][2],
+            &POV.CmdPermute[2][0],&POV.CmdPermute[2][1],&POV.CmdPermute[2][2]) == 10) {
          NewCmdProcessed = TRUE;
       }
       if (sscanf(CmdLine,"%lf POV CmdAngle = [%lf %lf %lf] deg",
          CmdTime,&Ang1,&Ang2,&Ang3) == 4) {
          NewCmdProcessed = TRUE;
-         POV->CmdAngle[0] = Ang1*D2R;
-         POV->CmdAngle[1] = Ang2*D2R;
-         POV->CmdAngle[2] = Ang3*D2R;
+         POV.CmdAngle[0] = Ang1*D2R;
+         POV.CmdAngle[1] = Ang2*D2R;
+         POV.CmdAngle[2] = Ang3*D2R;
       }
-      if (sscanf(CmdLine,"%lf POV TimeToGo = %lf",CmdTime,&POV->TimeToGo) == 2) {
+      if (sscanf(CmdLine,"%lf POV TimeToGo = %lf",CmdTime,&POV.TimeToGo) == 2) {
          NewCmdProcessed = TRUE;
       }
       if (sscanf(CmdLine,"%lf POV Frame = %c",CmdTime,&FrameChar) == 2) {
          NewCmdProcessed = TRUE;
-         if (FrameChar == 'N') POV->Frame = FRAME_N;
-         else if (FrameChar == 'L') POV->Frame = FRAME_L;
-         else if (FrameChar == 'F') POV->Frame = FRAME_F;
-         else if (FrameChar == 'S') POV->Frame = FRAME_S;
-         else if (FrameChar == 'B') POV->Frame = FRAME_B;
+         if (FrameChar == 'N') POV.Frame = FRAME_N;
+         else if (FrameChar == 'L') POV.Frame = FRAME_L;
+         else if (FrameChar == 'F') POV.Frame = FRAME_F;
+         else if (FrameChar == 'S') POV.Frame = FRAME_S;
+         else if (FrameChar == 'B') POV.Frame = FRAME_B;
       }
 
       return(NewCmdProcessed);
@@ -1462,17 +1368,13 @@ long GuiCmdInterpreter(char CmdLine[512], double *CmdTime)
 /*********************************************************************/
 int HandoffToGui(int argc, char **argv)
 {
-      struct SCType *S;
-      struct CameraType *Cam;
-      long Isc,Icam;
-      
       PausedByMouse = 0;
 
       ReadGraphicsInpFile();
       LoadFOVs();
       InitColors();
-      SetPovOrientation(&Eye);
-      UpdatePOV(&Eye);
+      SetPovOrientation();
+      UpdatePOV();
 
       printf("Initializing GLUT\n");
       glutInit(&argc,argv);
@@ -1486,16 +1388,6 @@ int HandoffToGui(int argc, char **argv)
       }
       if (SphereWindowExists) {
          InitSphereWindow();
-      }
-      
-      for(Isc=0;Isc<Nsc;Isc++) {
-         S = &SC[Isc];
-         for(Icam=0;Icam<S->Ncam;Icam++) {
-            Cam = &S->Cam[Icam];
-            if (!Cam->Export) {
-               InitCameraWindow(Cam);
-            }
-         }
       }
       
       /* Comment out when OpenGL installation is stable */

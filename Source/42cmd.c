@@ -30,7 +30,7 @@ long SimCmdInterpreter(char CmdLine[512],double *CmdTime)
 {
       char response[80];
       long NewCmdProcessed = FALSE;
-      long Isc,Ib,Ig,Idof;
+      long Isc,Ig,Idof;
       double Val;
       long Iorb,i;
       char DvFrame;
@@ -94,14 +94,6 @@ long SimCmdInterpreter(char CmdLine[512],double *CmdTime)
                 &O->MeanMotion,&O->Period);
       }
       
-      if (sscanf(CmdLine,"%lf Impart Impulsive Torque of [%lf %lf %lf] Nm to SC[%ld].B[%ld]",
-         CmdTime,&Vec[0],&Vec[1],&Vec[2],&Isc,&Ib) == 6) {
-         NewCmdProcessed = TRUE;
-         SC[Isc].B[Ib].Trq[0] += Vec[0];
-         SC[Isc].B[Ib].Trq[1] += Vec[1];
-         SC[Isc].B[Ib].Trq[2] += Vec[2];
-      }
-
       if (sscanf(CmdLine,"%lf SC[%ld].LoopGain = %lf",CmdTime,&Isc,&Val) == 3) {
          NewCmdProcessed = TRUE;
          SC[Isc].LoopGain = Val;

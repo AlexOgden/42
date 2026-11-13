@@ -14,14 +14,14 @@
 #define _POSIX_C_SOURCE 1 /* For signal handling */
 #include <stdio.h>
 #include <stdlib.h>
+#include <dlfcn.h>
 
 #include "42.h"
 
 #if defined(__linux__)
-#include <dlfcn.h>
 #include <semaphore.h>
-static char BusName[121] = "command";
-static char ConnectionString[121] = "tcp://127.0.0.1:12001";
+static char BusName[120] = "command";
+static char ConnectionString[120] = "tcp://127.0.0.1:12001";
 static sem_t sem;
 
 typedef struct NE_Bus NE_Bus;
@@ -84,6 +84,7 @@ void NOS3Time(long *year, long *day_of_year, long *month, long *day, long *hour,
 static void ReadNos3InpFile(void)
 {
     static long First = 1;
+    char junk[120], newline, response[120];
     char *File = "Inp_NOS3.txt";
     char *FileName;
     FILE *infile;
@@ -91,17 +92,13 @@ static void ReadNos3InpFile(void)
     if (First) {
         First = 0;
         FileName = (char *) calloc(strlen(InOutPath) + strlen(File) + 1, sizeof(char));
-         if (FileName==NULL) {
-            printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
-            exit(1);
-         }
         strcpy(FileName, InOutPath);
         strcat(FileName, File);
         infile = fopen(FileName, "r");
         if(infile != NULL) {
-            ScanLine(infile,"",0,NULL);
-            ScanLine(infile,"%120s",1,BusName);
-            ScanLine(infile,"%120s",1,ConnectionString);
+            fscanf(infile, "%[^\n] %[\n]", junk, &newline);
+            fscanf(infile, "%s %[^\n] %[\n]", BusName, junk, &newline);
+            fscanf(infile, "%s %[^\n] %[\n]", ConnectionString, junk, &newline);
             fclose(infile);
         }
         free(FileName);
