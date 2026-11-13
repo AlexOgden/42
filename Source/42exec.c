@@ -15,6 +15,9 @@
 #define DECLARE_GLOBALS
 #include "42.h"
 #undef DECLARE_GLOBALS
+#if !defined(_WIN32)
+#include <signal.h>
+#endif
 
 /* #ifdef __cplusplus
 ** namespace _42 {
@@ -394,6 +397,9 @@ int exec(int argc,char **argv)
       SolveTime = 0.0;
 
       InitSim(argc,argv);
+      #if !defined(_WIN32)
+      signal(SIGPIPE,SIG_IGN);
+      #endif
       CmdInterpreter();
       InitInterProcessComm();
       #ifdef _ENABLE_GUI_

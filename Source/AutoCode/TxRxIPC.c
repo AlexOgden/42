@@ -251,7 +251,7 @@ void WriteToSocket(SOCKET Socket,  char **Prefix, long Nprefix, long EchoEnabled
       MsgLen += LineLen;
       if (EchoEnabled) printf("%s",line);
       if (EchoEnabled) printf("MsgLen = %ld\n",MsgLen);
-      printf("\n");
+      if (EchoEnabled) printf("\n");
 
       Success = write(Socket,Msg,MsgLen);
       if (Success < 0) {
@@ -281,11 +281,12 @@ void ReadFromSocket(SOCKET Socket, long EchoEnabled)
       char Ack[4] = "Ack\0";
       long k;
 
-      NumBytes = read(Socket,Msg,16384);
-      if (NumBytes < 0) {
-         /* Non-blocking: no data available, just return and continue sim */
+      NumBytes = read(Socket,Msg,16383);
+      if (NumBytes <= 0) {
+         /* Non-blocking: no data available (or peer closed), just return and continue sim */
          return;
       }
+      Msg[NumBytes] = '\0';
       write(Socket,Ack,4);
 
       Done = 0;
@@ -294,12 +295,13 @@ void ReadFromSocket(SOCKET Socket, long EchoEnabled)
          /* Parse lines from Msg, newline-delimited */
          Iline = 0;
          memset(line,'\0',512);
-         while((Msg[Imsg] != '\n') && (Iline < 511) && (Imsg < 16383)) {
+         while((Msg[Imsg] != '\n') && (Iline < 511) && (Imsg < NumBytes)) {
             line[Iline++] = Msg[Imsg++];
          }
-         line[Iline++] = Msg[Imsg++];
-         /* Always print every received line for debugging */
-         printf("[IPC RX] %s", line);
+         if (Imsg < NumBytes && Msg[Imsg] == '\n') {
+            line[Iline++] = Msg[Imsg++];
+         }
+         if (EchoEnabled) printf("[IPC RX] %s", line);
 
          if (sscanf(line,"TIME %ld-%ld-%ld:%ld:%lf",
             &Year,&doy,&Hour,&Minute,&Second) == 5) {
@@ -484,20 +486,20 @@ void ReadFromSocket(SOCKET Socket, long EchoEnabled)
       */
 
       /* Ideal actuators (torque/force directly on body 0) */
+      if (sscanf(line,"SC[%ld].AC.IdealTrq = [%le %le %le]",
+         &Is,
+         &DbleVal[0],
+         &DbleVal[1],
+         &DbleVal[2]) == 4)
       {
-         int match = sscanf(line,"SC[%ld].AC.IdealTrq = [%le %le %le]",
-            &Is,
-            &DbleVal[0],
-            &DbleVal[1],
-            &DbleVal[2]);
-         printf("[IPC RX] IdealTrq sscanf match count: %d\n", match);
-         if (match == 4) {
+         if (Is >= 0 && Is < Nsc && SC[Is].Exists) {
             SC[Is].AC.IdealTrq[0] = DbleVal[0];
             SC[Is].AC.IdealTrq[1] = DbleVal[1];
             SC[Is].AC.IdealTrq[2] = DbleVal[2];
-            /* Console confirmation of IdealTorque command */
-            printf("IdealTorque applied for SC[%ld]: [% .6le % .6le % .6le]\n",
-               Is, DbleVal[0], DbleVal[1], DbleVal[2]);
+            if (EchoEnabled) {
+               printf("IdealTorque applied for SC[%ld]: [% .6le % .6le % .6le]\n",
+                  Is, DbleVal[0], DbleVal[1], DbleVal[2]);
+            }
          }
       }
       if (sscanf(line,"SC[%ld].AC.IdealFrc = [%le %le %le]",
@@ -506,9 +508,15 @@ void ReadFromSocket(SOCKET Socket, long EchoEnabled)
          &DbleVal[1],
          &DbleVal[2]) == 4)
       {
-         SC[Is].AC.IdealFrc[0] = DbleVal[0];
-         SC[Is].AC.IdealFrc[1] = DbleVal[1];
-         SC[Is].AC.IdealFrc[2] = DbleVal[2];
+         if (Is >= 0 && Is < Nsc && SC[Is].Exists) {
+            SC[Is].AC.IdealFrc[0] = DbleVal[0];
+            SC[Is].AC.IdealFrc[1] = DbleVal[1];
+            SC[Is].AC.IdealFrc[2] = DbleVal[2];
+            if (EchoEnabled) {
+               printf("IdealForce applied for SC[%ld]: [% .6le % .6le % .6le]\n",
+                  Is, DbleVal[0], DbleVal[1], DbleVal[2]);
+            }
+         }
       }
 
       /* Reaction wheel torque command (per wheel) via AC */
@@ -516,14 +524,18 @@ void ReadFromSocket(SOCKET Socket, long EchoEnabled)
          &Is,&k,
          &DbleVal[0]) == 3)
       {
-         SC[Is].AC.Whl[k].Tcmd = DbleVal[0];
+         if (Is >= 0 && Is < Nsc && SC[Is].Exists && k >= 0 && k < SC[Is].AC.Nwhl) {
+            SC[Is].AC.Whl[k].Tcmd = DbleVal[0];
+         }
       }
       /* Also support direct set on S->Whl (bypasses AC) */
       if (sscanf(line,"SC[%ld].Whl[%ld].Tcmd = %le",
          &Is,&k,
          &DbleVal[0]) == 3)
       {
-         SC[Is].Whl[k].Tcmd = DbleVal[0];
+         if (Is >= 0 && Is < Nsc && SC[Is].Exists && k >= 0 && k < SC[Is].Nw) {
+            SC[Is].Whl[k].Tcmd = DbleVal[0];
+         }
       }
 
       /* Magnetorquer command (per MTB) via AC */
@@ -531,7 +543,9 @@ void ReadFromSocket(SOCKET Socket, long EchoEnabled)
          &Is,&k,
          &DbleVal[0]) == 3)
       {
-         SC[Is].AC.MTB[k].Mcmd = DbleVal[0];
+         if (Is >= 0 && Is < Nsc && SC[Is].Exists && k >= 0 && k < SC[Is].AC.Nmtb) {
+            SC[Is].AC.MTB[k].Mcmd = DbleVal[0];
+         }
       }
 
       /* Thruster commands via AC */
@@ -539,13 +553,17 @@ void ReadFromSocket(SOCKET Socket, long EchoEnabled)
          &Is,&k,
          &DbleVal[0]) == 3)
       {
-         SC[Is].AC.Thr[k].PulseWidthCmd = DbleVal[0];
+         if (Is >= 0 && Is < Nsc && SC[Is].Exists && k >= 0 && k < SC[Is].AC.Nthr) {
+            SC[Is].AC.Thr[k].PulseWidthCmd = DbleVal[0];
+         }
       }
       if (sscanf(line,"SC[%ld].AC.Thr[%ld].ThrustLevelCmd = %le",
          &Is,&k,
          &DbleVal[0]) == 3)
       {
-         SC[Is].AC.Thr[k].ThrustLevelCmd = DbleVal[0];
+         if (Is >= 0 && Is < Nsc && SC[Is].Exists && k >= 0 && k < SC[Is].AC.Nthr) {
+            SC[Is].AC.Thr[k].ThrustLevelCmd = DbleVal[0];
+         }
       }
 
       if (sscanf(line,"World[%ld].PosH = [%le %le %le]",
@@ -603,12 +621,13 @@ void ReadFromSocket(SOCKET Socket, long EchoEnabled)
          Orb[Is].VelN[2] = DbleVal[2];
       }
          if (!strncmp(line,"[ENDMSG]",8)) {
-            Done = 1;
-            //sprintf(line,"[ENDMSG] reached\n");
+            /* Frame delimiter reached; continue if additional coalesced frames remain in Msg */
+            if (Imsg >= NumBytes || Imsg >= 16383) {
+               Done = 1;
+            }
          }
-         if (Imsg >= 16383) {
+         else if (Imsg >= NumBytes || Imsg >= 16383) {
             Done = 1;
-            printf("Imsg limit exceeded\n");
          }
       }
       if (EchoEnabled) printf("MsgLen = %ld\n\n",Imsg);
