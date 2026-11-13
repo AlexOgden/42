@@ -7,7 +7,7 @@ PASSIVE_FSW                   !  Flight Software Identifier
 ************************* Orbit Parameters ****************************
 ENCKE                         !  Orbit Prop FIXED, EULER_HILL, or ENCKE
 CM                            !  Pos of CM or ORIGIN, wrt F
-20.0  0.0  0.0                !  Pos wrt Formation (m), expressed in F
+40.0  0.0  0.0                !  Pos wrt Formation (m), expressed in F
 0.0   0.0 -0.005               !  Vel wrt Formation (m/s), expressed in F
 *************************** Initial Attitude ***************************
 NAN                           ! Ang Vel wrt [NL], Att [QA] wrt [NLF]
@@ -28,7 +28,7 @@ NONE                        ! Shaker File Name
 1                             ! Number of Bodies
 ================================ Body 0 ================================
 1.0                           ! Mass
-1.0  2.0  4.0                 ! Moments of Inertia (kg-m^2)
+3.0  4.0  5.0                 ! Moments of Inertia (kg-m^2)
 0.0  0.0  0.0                 ! Products of Inertia (xy,xz,yz)
 0.0  0.0  0.0                 ! Location of mass center, m
 0.0  0.0  0.0                 ! Constant Embedded Momentum (Nms)
@@ -156,6 +156,20 @@ Z_AXIS                        ! Boresight Axis X_AXIS, Y_AXIS, or Z_AXIS
 0.0                           ! DV Noise, m/s
 0.5                           ! Initial Bias (m/s^2)
 0                             ! Node
+********************************* Camera *********************************
+0                           ! Number of Cameras
+================================ Camera 0 ================================
+1.0                         ! Sample Time,sec
+"Camera"                    ! Title
+0  0                        ! Body, Node
+90.0  0.0  0.0  321         ! Nominal Mounting Angles (deg), Seq in Body
+Z_AXIS                      ! Boresight Axis X_AXIS, Y_AXIS, or Z_AXIS
+800  450                    ! Screen Position, pixels
+300  300                    ! Window Width, Height, pixels
+30.0                        ! Vertical FOV Size, deg
+1.0  1000.0                 ! Near, Far Clipping Planes (m)
+RGB                         ! Pixel Format (RGB, RGBA, DEPTH)
+TRUE   FALSE                ! Display to Screen, Export to CPU
 ************************ Fine Guidance Sensor ****************************
 0                           ! Number of Fine Guidance Sensors
 ========================= Fine Guidance Sensor 0 =========================

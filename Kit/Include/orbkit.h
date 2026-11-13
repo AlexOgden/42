@@ -142,7 +142,7 @@ struct OrbitType {
    double rmin;  /* Periapsis radius.  Always well behaved [[m]] */
    double Period;
    double MeanMotion;
-   char FileName[20];
+   char FileName[121];
    long J2DriftEnabled;
    /* J2 Drift Parameters */
    double MeanSMA;
@@ -177,6 +177,8 @@ struct OrbitType {
    double NodeDynTime[4]; /* Sec since J2000 (TT) */
    double NodePos[4][3];
    double NodeVel[4][3];
+   char SplineFmt[120];
+   long SplineDateFormat; /* DATE_MON_DAY or DATE_DOY */
    /* Chebyshev Coefficients */
    long Ncheb;
    struct Cheb3DType *Cheb;

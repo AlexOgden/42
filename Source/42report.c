@@ -27,7 +27,7 @@ void WriteScVarsToCsv(void);
 double FindTotalProjectedArea(struct SCType *S,double VecN[3])
 {
       struct BodyType *B;
-      struct GeomType *G;
+      struct MeshType *M;
       struct PolyType *P;
       double ProjArea = 0.0;
       double VecB[3],VoN;
@@ -39,9 +39,9 @@ double FindTotalProjectedArea(struct SCType *S,double VecN[3])
          /* Transform Direction Vector from N to B */
          MxV(B->CN,VecN,VecB);
 
-         G = &Geom[B->GeomTag];
-         for(Ipoly=0;Ipoly<G->Npoly;Ipoly++) {
-            P = &G->Poly[Ipoly];
+         M = &Mesh[B->MeshTag];
+         for(Ipoly=0;Ipoly<M->Npoly;Ipoly++) {
+            P = &M->Poly[Ipoly];
             VoN = VoV(VecB,P->Norm);
             if (VoN > 0.0) {
                ProjArea += VoN*P->Area;
@@ -54,7 +54,7 @@ double FindTotalProjectedArea(struct SCType *S,double VecN[3])
 double FindTotalUnshadedProjectedArea(struct SCType *S,double VecN[3])
 {
       struct BodyType *B;
-      struct GeomType *G;
+      struct MeshType *M;
       struct PolyType *P;
       double ProjArea = 0.0;
       double VecB[3],VoN;
@@ -68,9 +68,9 @@ double FindTotalUnshadedProjectedArea(struct SCType *S,double VecN[3])
          /* Transform Direction Vector from N to B */
          MxV(B->CN,VecN,VecB);
 
-         G = &Geom[B->GeomTag];
-         for(Ipoly=0;Ipoly<G->Npoly;Ipoly++) {
-            P = &G->Poly[Ipoly];
+         M = &Mesh[B->MeshTag];
+         for(Ipoly=0;Ipoly<M->Npoly;Ipoly++) {
+            P = &M->Poly[Ipoly];
             VoN = VoV(VecB,P->Norm);
             if (VoN > 0.0) {
                ProjArea += VoN*P->UnshadedArea;
@@ -206,6 +206,79 @@ void ReportEpoch(void)
       fclose(outfile);
 }
 /*********************************************************************/
+void WriteCommLinkToCsv(void)
+{
+      static long First = 1;
+      long Il;
+      static FILE **outfile;
+      struct CommLinkType *L;
+      char FileName[80];
+      
+      if (Nlink > 0) {
+         if (First) {
+            First = 0;
+            outfile = (FILE**) calloc(Nlink,sizeof(FILE*));
+            for(Il=0;Il<Nlink;Il++) {
+               L = &CommLink[Il];
+               if (L->OutEnabled) {
+                  if (Nlink==1) sprintf(FileName,"Link.csv");
+                  else if (Nlink<=10) sprintf(FileName,"Link%1ld.csv",Il);
+                  else sprintf(FileName,"Link%02ld.csv",Il);
+                  outfile[Il] = FileOpen(InOutPath,FileName,"w");
+
+                  L->OutCtr = 1000000000;
+                  fprintf(outfile[Il],"Time");
+                  fprintf(outfile[Il],",Doppler");
+                  fprintf(outfile[Il],",Loss");
+                  fprintf(outfile[Il],",Delay");
+                  fprintf(outfile[Il],",Carrier");
+                  fprintf(outfile[Il],",Noise");
+                  fprintf(outfile[Il],",CNR");
+                  fprintf(outfile[Il],",EIRP");
+                  fprintf(outfile[Il],",FSPL");
+                  fprintf(outfile[Il],",PwrFluxDens");
+                  fprintf(outfile[Il],",Range");
+                  fprintf(outfile[Il],",RangeRate");
+                  fprintf(outfile[Il],",TxAntGain");
+                  fprintf(outfile[Il],",RxAntGain");
+                  fprintf(outfile[Il],",TxOcculted");
+                  fprintf(outfile[Il],",RxOcculted");
+                  fprintf(outfile[Il],",PathIsOcculted");
+                  fprintf(outfile[Il],"\n");
+               }
+            }
+         }
+
+         for(Il=0;Il<Nlink;Il++) {
+            L = &CommLink[Il];
+            if (L->OutEnabled) {
+               L->OutCtr++;
+               if (L->OutCtr > L->MaxOutCtr) {
+                  L->OutCtr = 1;
+                  fprintf(outfile[Il],"%18.12le",SimTime);
+                  fprintf(outfile[Il],",%18.12le",L->Doppler);
+                  fprintf(outfile[Il],",%18.12le",L->Loss);
+                  fprintf(outfile[Il],",%18.12le",L->Delay);
+                  fprintf(outfile[Il],",%18.12le",L->Carrier);
+                  fprintf(outfile[Il],",%18.12le",L->Noise);
+                  fprintf(outfile[Il],",%18.12le",L->CNR);
+                  fprintf(outfile[Il],",%18.12le",L->EIRP);
+                  fprintf(outfile[Il],",%18.12le",L->FreeSpacePathLoss);
+                  fprintf(outfile[Il],",%18.12le",L->PowerFluxDensity);
+                  fprintf(outfile[Il],",%18.12le",L->Range);
+                  fprintf(outfile[Il],",%18.12le",L->RangeRate);
+                  fprintf(outfile[Il],",%18.12le",L->TxAntGain);
+                  fprintf(outfile[Il],",%18.12le",L->RxAntGain);
+                  fprintf(outfile[Il],",%ld",L->TxOcculted);
+                  fprintf(outfile[Il],",%ld",L->RxOcculted);
+                  fprintf(outfile[Il],",%ld",L->PathIsOcculted);
+                  fprintf(outfile[Il],"\n");
+               }
+            }
+         }
+      }
+}
+/*********************************************************************/
 void Report(void)
 {
       static FILE *timefile;
@@ -237,7 +310,7 @@ void Report(void)
       double PosW[3],VelW[3];
       double CRL[3][3] = {{1.0,0.0,0.0},{0.0,1.0,0.0},{0.0,0.0,1.0}};
       //double SMA,ecc,inc,RAAN,ArgP,anom,tp,SLR,alpha,rmin,MeanMotion,Period;
-      char s[40];
+      char s[80];
       char Fmt[40];
       //double ZAxis[3] = {0.0,0.0,1.0};
 
@@ -252,7 +325,7 @@ void Report(void)
          ConstraintFile = (FILE **) calloc(Nsc,sizeof(FILE *));
          for(Isc=0;Isc<Nsc;Isc++) {
             if (SC[Isc].Exists) {
-               if (Nsc == 1) sprintf(Fmt,"");
+               if (Nsc == 1) strcpy(Fmt,"\0");
                else if (Nsc <= 10) sprintf(Fmt,"%1ld",Isc);
                else sprintf(Fmt,"%02ld",Isc);
                sprintf(s,"u%s.42",Fmt);
@@ -445,6 +518,7 @@ void Report(void)
       
       WriteAcVarsToCsv();
       WriteScVarsToCsv();
+      WriteCommLinkToCsv();
       
       /* An example how to call specialized reporting based on sim case */
       /* if (!strcmp(InOutPath,"./Potato/")) PotatoReport(); */

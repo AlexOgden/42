@@ -42,6 +42,7 @@ function BeginWriteFunction(S)
       F *= "      struct SCType *S;\n";
       F *= "      struct WorldType *W;\n";
       F *= "      struct OrbitType *O;\n";
+      F *= "      struct CommLinkType *L;\n";
       F *= "      int Success;\n";
       F *= "      char Ack[4] = \"Ack\\0\";\n";
       F *= "      long Is,Ipfx;\n";
@@ -325,8 +326,8 @@ function AddToWriteFunction(F,Sweep,StructName,StructSize,SubstructName,
       else
          F *= Sweep.Alias*"->";
          F *= StructName;
-         if (HasK) F *= "[k]"; end
-         F *= "."*VarName;
+         if (HasK) F *= "[k]."; end
+         F *= VarName;
       end
       F *= ");\n"
 
@@ -629,6 +630,7 @@ function main()
       SC = SweepType("SCType","SC","S","Nsc");
       World = SweepType("WorldType","World","W","NWORLD");
       Orb = SweepType("OrbitType","Orb","O","Norb");
+      Link = SweepType("CommLinkType","CommLink","L","Nlink");
                        
       WriteFcnString = BeginSweepWriteBlock(WriteFcnString,SC);
       (WriteFcnString,ReadFcnString) = SweepTbl(SC,WriteFcnString,ReadFcnString);
@@ -640,6 +642,10 @@ function main()
 
       WriteFcnString = BeginSweepWriteBlock(WriteFcnString,Orb);
       (WriteFcnString,ReadFcnString) = SweepTbl(Orb,WriteFcnString,ReadFcnString);
+      WriteFcnString = EndSweepWriteBlock(WriteFcnString);
+
+      WriteFcnString = BeginSweepWriteBlock(WriteFcnString,Link);
+      (WriteFcnString,ReadFcnString) = SweepTbl(Link,WriteFcnString,ReadFcnString);
       WriteFcnString = EndSweepWriteBlock(WriteFcnString);
 
       WriteFcnString = BeginWriteFunction(WriteFcnString);

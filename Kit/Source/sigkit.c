@@ -219,11 +219,20 @@ struct FilterType *CreateGeneralFilter(long Ns, double *A, double *B,
       long i;
 
       F = (struct FilterType *) calloc(1,sizeof(struct FilterType));
+      if (F==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
 
       F->A = (double *) calloc(Ns,sizeof(double));
       F->B = (double *) calloc(Ns,sizeof(double));
       F->x = (double *) calloc(Ns,sizeof(double));
       F->y = (double *) calloc(Ns,sizeof(double));
+
+      if (F->A==NULL || F->B==NULL || F->x==NULL || F->y==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
 
       F->Ns = Ns;
       for(i=0;i<Ns;i++) {
@@ -232,7 +241,7 @@ struct FilterType *CreateGeneralFilter(long Ns, double *A, double *B,
       }
       F->dxmax = dxmax;
       F->ymin = ymin;
-
+      
       return(F);
 }
 /**********************************************************************/
@@ -251,12 +260,22 @@ struct FilterType *CreateFirstOrderLowpassFilter(double w, double T,
       }
 
       F = (struct FilterType *) calloc(1,sizeof(struct FilterType));
+      if (F==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
 
       F->Ns = 2;
       F->A = (double *) calloc(F->Ns,sizeof(double));
       F->B = (double *) calloc(F->Ns,sizeof(double));
       F->x = (double *) calloc(F->Ns,sizeof(double));
       F->y = (double *) calloc(F->Ns,sizeof(double));
+
+      if (F->A==NULL || F->B==NULL || F->x==NULL || F->y==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
+
       F->A[0] = exp(-w*T);
       F->B[0] = 0.5*(1.0-F->A[0]);
       F->dxmax = dxmax;
@@ -280,16 +299,27 @@ struct FilterType *CreateFirstOrderHighpassFilter(double w, double T,
       }
 
       F = (struct FilterType *) calloc(1,sizeof(struct FilterType));
+      if (F==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
 
       F->Ns = 2;
       F->A = (double *) calloc(F->Ns,sizeof(double));
       F->B = (double *) calloc(F->Ns,sizeof(double));
       F->x = (double *) calloc(F->Ns,sizeof(double));
       F->y = (double *) calloc(F->Ns,sizeof(double));
+
+      if (F->A==NULL || F->B==NULL || F->x==NULL || F->y==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
+      
       F->A[0] = exp(-w*T);
       F->B[0] = 0.5*(1.0+F->A[0]);
       F->dxmax = dxmax;
       F->ymin = ymin;
+
 
       return(F);
 }
@@ -310,6 +340,10 @@ struct FilterType *CreateSecondOrderLowpassFilter(double w, double z,
       }
 
       F = (struct FilterType *) calloc(1,sizeof(struct FilterType));
+      if (F==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
 
       F->Ns = 3;
       F->A = (double *) calloc(F->Ns,sizeof(double));
@@ -317,6 +351,11 @@ struct FilterType *CreateSecondOrderLowpassFilter(double w, double z,
       F->x = (double *) calloc(F->Ns,sizeof(double));
       F->y = (double *) calloc(F->Ns,sizeof(double));
 
+      if (F->A==NULL || F->B==NULL || F->x==NULL || F->y==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
+      
       a = exp(-z*w*T);
       F->A[0] = 2.0*a*cos(w*T);
       F->A[1] = -a*a;
@@ -343,6 +382,10 @@ struct FilterType *CreateSecondOrderHighpassFilter(double w, double z,
       }
 
       F = (struct FilterType *) calloc(1,sizeof(struct FilterType));
+      if (F==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
 
       F->Ns = 3;
       F->A = (double *) calloc(F->Ns,sizeof(double));
@@ -350,6 +393,10 @@ struct FilterType *CreateSecondOrderHighpassFilter(double w, double z,
       F->x = (double *) calloc(F->Ns,sizeof(double));
       F->y = (double *) calloc(F->Ns,sizeof(double));
 
+      if (F->A==NULL || F->B==NULL || F->x==NULL || F->y==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
       a = exp(-z*w*T);
       F->A[0] = 2.0*a*cos(w*T);
       F->A[1] = -a*a;
@@ -520,10 +567,18 @@ struct DelayType *CreateDelay(double DelayTime, double DT)
       struct DelayType *D;
       
       D = (struct DelayType *) calloc(1,sizeof(struct DelayType));
+      if (D==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
       
       D->N = ((long) (DelayTime/DT+0.5));
       
       D->CircBuffer = (double *) calloc(D->N,sizeof(double));
+      if (D->CircBuffer==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
       
       D->Idx = 0;
       

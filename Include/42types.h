@@ -12,10 +12,15 @@
 /*    All Other Rights Reserved.                                      */
 
 
-#include "geomkit.h"
+#include "meshkit.h"
 #include "orbkit.h"
 #include "sigkit.h"
 #include "AcTypes.h"
+#ifdef _ENABLE_GUI_
+   #ifdef _USE_GLFW_
+      #include <GLFW/glfw3.h>
+   #endif
+#endif
 
 #ifndef __42TYPES_H__
 #define __42TYPES_H__
@@ -42,11 +47,67 @@ struct FormationType {
    double PosR[3]; /* Position of F wrt R, expressed in N */
 };
 
+struct TargetType {
+   /*~ Internal Variables ~*/
+   long Type;
+   long World;
+   long RefOrb;
+   long SC;
+   long Body;
+   double PosR[3];
+   double PosN[3];
+   double PosH[3];
+   double CN[3][3];
+};
+
+struct POVType {
+   /*~ Internal Variables ~*/
+   long Mode; /* Track Host, Track Target, or Fixed in Host */
+   struct TargetType Host;
+   struct TargetType Target;
+   long View;
+   long Frame;  /* Which frame is POV frame oriented in? (N=0,L=1,F=2,B=3) */
+   long BoreAxis;  /* POV boresight axis (out of screen): POS_X, POS_Y, ..., NEG_Z */
+   long UpAxis;    /* POV axis pointing to top of window: POS_X, ... NEG_Z */
+   int PixWidth;
+   int PixHeight;
+   long FarSceneEnabled; /* TRUE/FALSE */
+   double AngWidth; /* Angular Width of POV Field of View */
+   double AngHeight; /* Angular Height of POV Field of View */
+   double Near, Far;  /* Near and Far limits of POV FOV */
+   double CosFov, SinFov;
+   double Angle; /* Angle subtended in vertical, deg */
+   double AR;    /* Aspect ratio of POV FOV */
+   double w[3];  /* Angular velocity */
+   double q[4];  /* Quaternion */
+   double PosB[3];  /* Position wrt Host, expressed in Host Body Frame */
+   double Range;
+   double GridSpacing; /* For ProxOps Grid */
+   double wmax[3];
+   double C[3][3];
+   double CN[3][3];
+   double CH[3][3];
+   double CL[3][3];
+   double CF[3][3];
+   double CB[3][3];
+   double PosR[3]; /* Position vector in R, expressed in N */
+   double PosN[3]; /* Position vector in N, expressed in N */
+   double PosH[3]; /* Position vector in H, expressed in H */
+   float ViewMatrix[16];
+   /* For PanZoomPOV */
+   double TimeToGo;
+   long CmdSeq;
+   double CmdAngle[3];
+   double CmdRange;
+   double CmdPermute[3][3];
+};
+
+
 /* "Analysis" nodes, used both for Flex, ("Force" nodes and "Measurement" nodes) */
 /* and for more general purposes (sensor, actuator positions) */
 struct NodeType {
    /*~ Internal Variables ~*/
-   char comment[80]; 
+   char comment[81]; 
    double NomPosB[3];
    double PosCm[3]; /* Pos wrt B's cm, expressed in B */
    double **PSI;  /* Translational Mode shapes, 3 x B.Nf */
@@ -112,11 +173,11 @@ struct BodyType {
    double FrcN[3]; /* expressed in N */
    double alpha[3]; /* Angular acceleration of B wrt N, expressed in B */
    double accel[3]; /* Linear acceleration of B wrt N, expressed in N */
-   char GeomFileName[40];
-   char NodeFileName[40];
-   char FlexFileName[40];
+   char MeshFileName[41];
+   char NodeFileName[41];
+   char FlexFileName[41];
    float ModelMatrix[16]; /* For OpenGL */
-   long GeomTag;
+   long MeshTag;
    /* For KaneNBody Dynamics */
    long Gin;  /* Joint that B is Bout of */
    double beta[3];  /* Vector from B ref pt to B[0] ref pt, expressed in N */
@@ -276,7 +337,7 @@ struct JointType {
    long Rotc0;
    long Trnc0;
    
-   char ParmFileName[40];
+   char ParmFileName[41];
 };
 
 struct IdealActType {
@@ -314,7 +375,7 @@ struct WhlType {
    long Node;
    struct DelayType *Delay; /* For injecting delay into control loops */
    
-   char DragJitterFileName[40];
+   char DragJitterFileName[41];
 
    /* For Drag */
    double CoulCoef; /* Coulomb friction, Nm */
@@ -411,9 +472,11 @@ struct MagnetometerType {
    double Noise;
    long Node;
 
+   /*~ Outputs ~*/
+   double Field; /* Magfield Component, Tesla [~>~] */
+
    /*~ Internal Variables ~*/
    long SampleCounter;
-   double Field; /* Magfield Component, Tesla */
 };
 
 struct CssType {
@@ -428,10 +491,12 @@ struct CssType {
    double Quant;
    long Node;
 
+   /*~ Outputs ~*/
+   long Valid; /* [~>~] */
+   double Illum; /* Units defined by scale [~>~] */
+
    /*~ Internal Variables ~*/
    long SampleCounter;
-   long Valid;
-   double Illum; /* Units defined by scale */
    double Albedo; /* [0.0:1.0] */
 };
 
@@ -449,10 +514,12 @@ struct FssType {
    long H_Axis; /* (BoreAxis+1)%3 */
    long V_Axis; /* (BoreAxis+2)%3 */
 
+   /*~ Outputs ~*/
+   long Valid; /* [~>~] */
+   double SunAng[2]; /* [~>~] */
+
    /*~ Internal Variables ~*/
    long SampleCounter;
-   long Valid;
-   double SunAng[2];
    double SunVecS[3];
    double SunVecB[3];
    double AlbA;
@@ -481,10 +548,12 @@ struct StarTrackerType {
    long H_Axis; /* (BoreAxis+1)%3 */
    long V_Axis; /* (BoreAxis+2)%3 */
 
+   /*~ Outputs ~*/
+   long Valid; /* [~>~] */
+   double qn[4]; /* [~>~] */
+
    /*~ Internal Variables ~*/
    long SampleCounter;
-   long Valid;
-   double qn[4];
 };
 
 struct GpsType {
@@ -496,16 +565,18 @@ struct GpsType {
    double TimeNoise;
    long Node;
    
+   /*~ Outputs ~*/
+   long Valid; /* [~>~] */
+   long Rollover; /* [~>~] */
+   long Week; /* [~>~] */
+   double Sec; /* [~>~] */
+   double PosN[3]; /* [~>~] */
+   double VelN[3]; /* [~>~] */
+   double PosW[3]; /* [~>~] */
+   double VelW[3]; /* [~>~] */
+
    /*~ Internal Variables ~*/
    long SampleCounter;
-   long Valid;
-   long Rollover;
-   long Week;
-   double Sec;
-   double PosN[3];
-   double VelN[3];
-   double PosW[3];
-   double VelW[3];
    double Lng,Lat,Alt; /* Geocentric */
    double WgsLng,WgsLat,WgsAlt; /* Geodetic, WGS-84 */
 };
@@ -523,13 +594,15 @@ struct AccelType {
    double SigU;/* Bias Stability m/s^1.5 */
    double SigE; /* DV Readout Noise, m/s  */
    
+   /*~ Outputs ~*/
+   double TrueAcc; /* m/s^2 [~>~] */
+
    /*~ Internal Variables ~*/
    double AccumAccN[3];
    double Bias; /* m/s^2 */
    double PrevVelN[3]; /* m/s */
    double PrevQN[4];
    double DV; /* Change in velocity m/s */
-   double TrueAcc; /* m/s^2 */
    double MeasAcc; /* m/s^2 */
    double MaxAcc; /* m/s^2 max acceleration */
    double AccError;
@@ -540,6 +613,46 @@ struct AccelType {
    double DVRWCoef;
    double DVNoiseCoef; 
    double CorrCoef; /* Correlation Coef, exp(-SampleTime/BiasTime) */
+};
+
+struct CameraType {
+   /*~ Parameters ~*/
+   double SampleTime;
+   long SampleCounter;
+   long MaxCounter;
+
+   long Body;
+   long Node;
+   double qb[4];
+   double CB[3][3];
+   long BoreAxis;
+   long H_Axis;
+   long V_Axis;
+   
+   /*~ Internal Variables ~*/
+   long Init;
+   #ifdef _ENABLE_GUI_
+      #ifdef _USE_GLUT_
+         unsigned int Window;
+      #else
+         GLFWwindow *Window;
+      #endif
+   #endif
+   char Title[81];
+   int PosX;
+   int PosY;
+   
+   /* Export image from GPU to CPU for further processing */
+   /* PixelFormat: RGBA, RGB, DEPTH, ... */
+   long PixelFormat;
+   long BytesPerPixel;
+   long ImageLen;
+   unsigned char *ColorImage;
+   float *DepthImage;
+   long Display; /* On screen */
+   long Export; /* to CPU in Image buffer */
+
+   struct POVType POV;
 };
 
 struct OpticsType {
@@ -600,8 +713,8 @@ struct FgsType {
    double H; 
    double V;
    double Ang[3];
-   char OpticsFileName[40];
-   char PsfFileName[40];
+   char OpticsFileName[41];
+   char PsfFileName[41];
    
    long Nopt;
    struct OpticsType *Opt;
@@ -684,7 +797,7 @@ struct IpcType {
    long Mode; /* OFF, TX, RX, TXRX, WRITEFILE, READFILE */
    long SocketRole; /* SERVER, CLIENT, GMSEC_CLIENT */
    long AcsID;  /* AC.ID for ACS mode */
-   char HostName[40];
+   char HostName[41];
    long Port;
    long AllowBlocking;
    long EchoEnabled;
@@ -700,6 +813,8 @@ struct SCType {
    double wn[3]; /* Angular rates of Body 0 in N [[rad/sec]] [~=~] */
    double PosR[3]; /* Position of cm wrt Reference Orbit [[m]], expressed in N [~=~] */
    double VelR[3]; /* Velocity of cm wrt R [[m/s]], expressed in N [~=~] */
+   double PosN[3];   /* Position of cm wrt origin of N, m, expressed in N */
+   double VelN[3];   /* Velocity of cm wrt origin of N, m/sec, expressed in N */
    double svb[3]; /* Sun-pointing unit vector, expressed in SC.B[0] [~=~] */
    double bvb[3]; /* Magfield [[Tesla]], expressed in SC.B[0] [~=~] */
    double Hvb[3]; /* Total SC angular momentum [[Nms]], expressed in SC.B[0] [~=~] */
@@ -707,7 +822,7 @@ struct SCType {
    /*~ Internal Variables ~*/
    long ID;     /* SC[x].ID = x */
    long Exists;
-   char Label[40];
+   char Label[41];
    long DynMethod;  /* GAUSS_ELIM, ORDER_N */
    long OrbDOF;  /* FIXED, EULER_HILL, ENCKE, COWELL */
    long RefOrb;
@@ -731,6 +846,7 @@ struct SCType {
    long Nst; /* Number of star trackers */
    long Ngps; /* Number of GPS receivers */
    long Nacc; /* Number of accelerometer axes */
+   long Ncam; /* Number of camera sensors */
    long Nfgs; /* Number of Fine Guidance Sensors */
    long Nsh; /* Number of shakers */
    
@@ -739,8 +855,6 @@ struct SCType {
    double I[3][3]; /* Inertia matrix, wrt SC.cm, expressed in B0 frame */
    double PosEH[3];  /* Position of cm wrt R, m, in Euler-Hill coords */
    double VelEH[3];  /* Velocity of cm wrt R, m, in Euler-Hill coords */
-   double PosN[3];   /* Position of cm wrt origin of N, m, expressed in N */
-   double VelN[3];   /* Velocity of cm wrt origin of N, m/sec, expressed in N */
    double CLN[3][3]; /* Note that SC.CLN != Orb[RefOrb].CLN if SC.PosR != 0.0 */
    double CEN[3][3]; /* E = Equatorial frame: e1 = North, e2 = East, e3 = Nadir */
    double wln[3]; /* Expressed in N */
@@ -754,8 +868,8 @@ struct SCType {
    long Eclipse;
    double AtmoDensity;
    double DragCoef;
-   char FileName[20];
-   char SpriteFileName[40];
+   char FileName[41];
+   char SpriteFileName[41];
    unsigned int SpriteTexTag;
    /* The following are for OSCAR */
    double PosF[3]; /* Position of B0 origin wrt F, expressed in F */
@@ -769,7 +883,7 @@ struct SCType {
    long FlexActive;
    /* Include higher-order coupling terms in rigid-flex dynamics */
    long IncludeSecondOrderFlexTerms;
-   char ShakerFileName[40];
+   char ShakerFileName[41];
    long WhlDragActive;
    long WhlJitterActive;
    /* Workspace for KaneNBody */
@@ -802,6 +916,7 @@ struct SCType {
    struct StarTrackerType *ST;   /* [*Nst*] */
    struct GpsType *GPS;          /* [*Ngps*] */
    struct AccelType *Accel;      /* [*Nacc*] */
+   struct CameraType *Cam;       /* [*Ncam*] */
    struct FgsType *Fgs;          /* [*Nfgs*] */
    struct ShakerType *Shaker;    /* [*Nsh*] */
    
@@ -810,59 +925,6 @@ struct SCType {
    #endif
 };
 
-struct TargetType {
-   /*~ Internal Variables ~*/
-   long Type;
-   long World;
-   long RefOrb;
-   long SC;
-   long Body;
-   double PosR[3];
-   double PosN[3];
-   double PosH[3];
-   double CN[3][3];
-};
-
-struct POVType {
-   /*~ Internal Variables ~*/
-   long Mode; /* Track Host, Track Target, or Fixed in Host */
-   struct TargetType Host;
-   struct TargetType Target;
-   long View;
-   long Frame;  /* Which frame is POV frame oriented in? (N=0,L=1,F=2,B=3) */
-   long BoreAxis;  /* POV boresight axis (out of screen): POS_X, POS_Y, ..., NEG_Z */
-   long UpAxis;    /* POV axis pointing to top of window: POS_X, ... NEG_Z */
-   double Width; /* Width of POV Field of View */
-   double Height; /* Height of POV Field of View */
-   double Near, Far;  /* Near and Far limits of POV FOV */
-   double CosFov, SinFov;
-   double Angle; /* Angle subtended in vertical, deg */
-   double AR;    /* Aspect ratio of POV FOV */
-   double PosLeftEye[3]; /* in POV frame, expressed in POV */
-   double PosRightEye[3]; /* in POV frame, expressed in POV */
-   double w[3];  /* Angular velocity */
-   double q[4];  /* Quaternion */
-   double PosB[3];  /* Position wrt Host, expressed in Host B[0] Frame */
-   double Range;
-   double GridSpacing; /* For ProxOps Grid */
-   double wmax[3];
-   double C[3][3];
-   double CN[3][3];
-   double CH[3][3];
-   double CL[3][3];
-   double CF[3][3];
-   double CB[3][3];
-   double PosR[3]; /* Position vector in R, expressed in N */
-   double PosN[3]; /* Position vector in N, expressed in N */
-   double PosH[3]; /* Position vector in H, expressed in H */
-   float ViewMatrix[16];
-   /* For PanZoomPOV */
-   double TimeToGo;
-   long CmdSeq;
-   double CmdAngle[3];
-   double CmdRange;
-   double CmdPermute[3][3];
-};
 
 struct RegionType {
    /*~ Internal Variables ~*/
@@ -876,9 +938,9 @@ struct RegionType {
    double CN[3][3];
    double wn[3]; /* Expressed in R frame */
    double ElastCoef,DampCoef,FricCoef;
-   char Name[20];
-   char GeomFileName[40];
-   long GeomTag;
+   char Name[41];
+   char MeshFileName[41];
+   long MeshTag;
    float ModelMatrix[16]; /* For OpenGL */
 };
 
@@ -924,11 +986,11 @@ struct WorldType {
 
    /* Graphical Properties */
    long HasRing;
-   char Name[20];
-   char MapFileName[40];
-   char GeomFileName[40];
-   char ColTexFileName[40];
-   char BumpTexFileName[40];
+   char Name[41];
+   char MapFileName[41];
+   char MeshFileName[41];
+   char ColTexFileName[41];
+   char BumpTexFileName[41];
    float Color[4];
    unsigned char Glyph[14];
    unsigned int TexTag;
@@ -938,7 +1000,7 @@ struct WorldType {
    unsigned int ColCubeTag;
    unsigned int BumpCubeTag;
    unsigned int CloudGlossCubeTag;
-   long GeomTag;
+   long MeshTag;
    unsigned int RingTexTag;
    double NearExtent,FarExtent;
 
@@ -987,7 +1049,7 @@ struct FovType {
    long RefOrb;
    long SC;
    long Body;
-   char Label[40];
+   char Label[41];
    long Nv;
    long BoreAxis; /* X_AXIS, Y_AXIS, Z_AXIS */
    long H_Axis; /* (BoreAxis+1)%3 */
@@ -1009,7 +1071,7 @@ struct TdrsType {
    double VelN[3];  /* Velocity vector in N frame (never used?) */
    double lat;
    double lng;
-   char Designation[40];
+   char Designation[41];
 };
 
 struct GroundStationType {
@@ -1019,7 +1081,7 @@ struct GroundStationType {
    long Show;
    double lng, lat;
    double PosW[3];  /* Position vector in World frame */
-   char Label[40];
+   char Label[41];
 };
 
 /* Framebuffer Objects for Spacecraft Shadows */
@@ -1064,7 +1126,7 @@ struct OrreryPOVType {
 
 struct ConstellationType {
    /*~ Internal Variables ~*/
-   char Tag[4]; 
+   char Tag[5]; 
    long Class;  /* MAJOR, ZODIAC, or MINOR */
    long Nstars;
    long Nlines;
@@ -1072,6 +1134,93 @@ struct ConstellationType {
    /* For each line */
    long *Star1;
    long *Star2;
+};
+
+struct AntPattType {
+   double PeakGain; /* [[dB]] */
+   double FloorGain; /* [[dB]] */
+   double MinRad; 
+   double MeshScl;
+   long MeshTag;
+};
+
+struct CommLinkType {
+   /*~ Outputs ~*/
+   double Doppler; /* Carrier Frequency Shift [[Hz]] [~=~] */
+   double Loss; /* [[dB]] */
+   double Delay; /* [[sec]] [~=~] */
+   double Carrier; /* [[dBw]] [~=~] */
+   double Noise; /* [[dBw]] */
+   double CNR; /* Carrier to Noise ratio [[dB]] [~=~] */
+   double EIRP; /* [[dBw]] */
+   double PowerFluxDensity; /* [[dBw]] */ 
+   double Range; /* [[m]] [~=~] */
+   double RangeRate; /* [[m/s]] [~=~] */
+   double TxAntGain; /* [[dB]] */
+   double RxAntGain; /* [[dB]] */
+   long TxOcculted;
+   long RxOcculted;
+   long PathIsOcculted; /* [~=~] */
+
+   /*~ Internal Variables ~*/
+   long Exists;
+   long Init;
+   long MaxOutCtr;
+   long OutCtr;
+   long OutEnabled;
+   long PosAdjustEnabled;
+   double DelayTol; /* [[sec]] */
+   
+   long LinkType; /* UPLINK (Gnd->SC),DOWNLINK(SC->Gnd),CROSSLINK(SC->SC) */
+   long TxID;
+   long TxBody;
+   long TxWorld;
+   double TxCAB[3][3];
+   double TxCAN[3][3];
+   double TxCAH[3][3];
+   double TxPosN[3];
+   double TxVelN[3];
+   double TxPosH[3];
+   double TxVelH[3];
+
+   long RxID;
+   long RxBody;
+   long RxWorld;
+   double RxCAB[3][3];
+   double RxCAN[3][3];
+   double RxCAH[3][3];
+   double RxPosN[3];
+   double RxVelN[3];
+   double RxPosH[3];
+   double RxVelH[3];
+
+   double Freq; /* [[Hz]] */
+   double Wavelength; /* [[m]] */
+   double NoiseFloor; /* [[dBw]] */
+   
+   double TxPower; /* [[dBw]] */
+   char TxAntFileName[81];
+   
+   double TxPathDirN[3]; /* Points from Tx to Rx, expressed in Tx's N */
+   double RxPathDirN[3]; /* Points from Rx to Tx, expressed in Rx's N */
+   double TxPathDirH[3]; /* Points from Tx to Rx, expressed in H */
+   double RxPathDirH[3]; /* Points from Rx to Tx, expressed in H */
+   double FreeSpacePathLoss; /* [[dB]] */
+   double AtmoPathLoss; /* [[dB]] */
+   double PathLoss; /* [[dB]] */
+
+   char RxAntFileName[81];
+   double RxNoisePower; /* [[dBw]] */
+
+   double AtmoMean; /* [[dB]] */
+   double AtmoStd; /* [[dB]] */
+   double AtmoCorrTime; /* [[sec]] */
+
+   /*~ Structures ~*/
+   struct RandomProcessType *AtmoNoise;
+   struct AntPattType TxAntPatt;
+   struct AntPattType RxAntPatt;
+   
 };
 
 

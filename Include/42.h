@@ -28,15 +28,15 @@
 #include "42defines.h"
 #include "dcmkit.h"
 #include "envkit.h"
-#include "geomkit.h"
 #include "iokit.h"
 #include "mathkit.h"
+#include "meshkit.h"
 #include "orbkit.h"
 #include "sigkit.h"
 #include "sphkit.h"
 #include "timekit.h"
 #include "fswkit.h"
-#include "msis86kit.h"
+//#include "msis86kit.h"
 
 /*
 ** #ifdef __cplusplus
@@ -52,12 +52,12 @@ EXTERN long Nsc;
 
 /* Number of materials */
 EXTERN long Nmatl;
-/* Number of geometric objects */
-EXTERN long Ngeom;
+/* Number of geometric meshes */
+EXTERN long Nmesh;
 
 EXTERN char InOutPath[512];
 EXTERN char ModelPath[512];
-EXTERN char CmdFileName[80];
+EXTERN char CmdFileName[81];
 
 /* Math Basics */
 EXTERN double Pi, TwoPi, HalfPi, SqrtTwo, SqrtHalf, D2R, R2D, A2R, R2A, GoldenRatio;
@@ -120,11 +120,12 @@ EXTERN struct SCType *SC;
 /* Frm structure describes a Formation of S/C's */
 EXTERN struct FormationType *Frm;
 
-/* Geom structure manages geometric objects, used for display and    */
+/* Mesh structure manages geometric objects, used for display and    */
 /* for surface force computation (e.g. aerodynamic)                  */
-EXTERN struct GeomType *Geom;
+EXTERN struct MeshType *Mesh;
 
-EXTERN struct POVType POV;
+EXTERN struct POVType Eye;
+EXTERN struct POVType *CurrentCamera;
 
 EXTERN struct TdrsType Tdrs[10];
 EXTERN struct GroundStationType *GroundStation;
@@ -164,6 +165,9 @@ EXTERN double AssembleTime,LockTime,TriangleTime,SubstTime,SolveTime;
 
 EXTERN struct ConstellationType Constell[89];
 
+/* Comm Link */
+EXTERN long Nlink;
+EXTERN struct CommLinkType *CommLink;
 
 long SimStep(void);
 void Ephemerides(void);
@@ -208,6 +212,7 @@ long OpticalFieldPoint(double StarVecB[3], struct OpticsType *O,
 long OpticalTrain(long FldSC, long FldBody, double FldPntB[3], double FldDirB[3], 
    long Nopt, struct OpticsType *Opt,
    long *OutSC, long *OutBody, double OutPntB[3], double OutDirB[3]);
+void CommLinkPerformance(void);
 
 /* Debug Function Prototypes */
 void EchoPVel(struct SCType *S);
@@ -238,6 +243,9 @@ void NOS3Time(long *year, long *day_of_year, long *month, long *day,
                    
 void InterProcessComm(void);
 void InitInterProcessComm(void);
+
+void CameraModel(struct SCType *S);
+void DrawCamera(void);
 
 #undef EXTERN
 

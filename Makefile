@@ -72,29 +72,33 @@ AUTOSRC = $(SRC)AutoCode/
 META = $(PROJDIR)MetaCode/
 
 
+
 ifeq ($(42PLATFORM),__APPLE__)
    # Mac Macros
    CINC = -I /usr/include -I /usr/local/include
    EXTERNDIR =
    # ARCHFLAG = -arch i386
    # ARCHFLAG = -arch x86_64
-   ARCHFLAG = -arch arm64
+   # ARCHFLAG = -arch arm64
+   ARCHFLAG = -arch $(shell uname -m)
    # For graphics interface, choose GLUT or GLFW GUI libraries
-   # GLUT is well known, but GLFW is better for newer Mac's hires displays
-   # OSX fixed their hires GLUT issue.  Keep GLFW around just in case.
+   # GLUT is well known, but is becoming considered obsolete.
+   # GLFW is newer and seems to be a good option going forward.
    #GLUT_OR_GLFW = _USE_GLFW_
    GLUT_OR_GLFW = _USE_GLUT_
 
    LFLAGS = 
    ifneq ($(strip $(GUIFLAG)),)
-      GLINC = -I /System/Library/Frameworks/OpenGL.framework/Headers/ -I /System/Library/Frameworks/GLUT.framework/Headers/
       ifeq ($(strip $(GLUT_OR_GLFW)),_USE_GLUT_)
-         LIBS = -framework System -framework Carbon -framework OpenGL -framework GLUT
+         GLINC = -I /System/Library/Frameworks/OpenGL.framework/Headers/ -I /System/Library/Frameworks/GLUT.framework/Headers/
+         LIBS = -framework System -framework Cocoa -framework OpenGL -framework GLUT
          GUIOBJ = $(OBJ)42gl.o $(OBJ)42glut.o $(OBJ)glkit.o $(OBJ)42gpgpu.o
          GUI_LIB = -D _USE_GLUT_
       else
-         LIBS = -lglfw -framework System -framework Carbon -framework OpenGL -framework GLUT
-         GUIOBJ = $(OBJ)42gl.o $(OBJ)42glfw.o $(OBJ)glkit.o $(OBJ)42gpgpu.o
+         GLFWDIR = /opt/homebrew/Cellar/glfw/3.5.1
+         GLINC = -I /System/Library/Frameworks/OpenGL.framework/Headers/ -I $(GLFWDIR)/include
+         LIBS = -L $(GLFWDIR)/lib -lglfw3 -framework System -framework Cocoa -framework OpenGL -framework QuartzCore -framework IOKit
+         GUIOBJ = $(OBJ)42gl.o $(OBJ)42glfw.o $(OBJ)glkit.o $(OBJ)42gpgpu.o  
          GUI_LIB = -D _USE_GLFW_
       endif
    else
@@ -102,6 +106,7 @@ ifeq ($(42PLATFORM),__APPLE__)
       LIBS = 
       GUIOBJ = 
    endif
+   NOS3OBJ = $(OBJ)42nos3.o
    XWARN = 
    EXENAME = 42
    CC = gcc
@@ -109,7 +114,7 @@ endif
 
 ifeq ($(42PLATFORM),__linux__)
    # Linux Macros
-   CINC =
+   CINC = -I /usr/include/
    EXTERNDIR =
    ARCHFLAG =
    # For graphics interface, choose GLUT or GLFW GUI libraries
@@ -136,6 +141,7 @@ ifeq ($(42PLATFORM),__linux__)
       LIBS = -ldl -lm -lpthread
       LFLAGS =
    endif
+   NOS3OBJ = $(OBJ)42nos3.o 
    XWARN = -Wno-unused-variable -Wno-unused-but-set-variable -Wno-stringop-overread
    EXENAME = 42
    CC = gcc
@@ -152,12 +158,13 @@ ifeq ($(42PLATFORM),__MSYS__)
    ifneq ($(strip $(GUIFLAG)),)
       # TODO: Option to use GLFW instead of GLUT?
       GLEW = $(EXTERNDIR)GLEW/
+      # GLEW = /mingw64/
       GLUT = $(EXTERNDIR)freeglut/
       LIBS =  -lopengl32 -lglu32 -lfreeglut -lws2_32 -lglew32
       LFLAGS = -L $(GLUT)lib/ -L $(GLEW)lib/
       GUIOBJ = $(OBJ)42gl.o $(OBJ)42glut.o $(OBJ)glkit.o $(OBJ)42gpgpu.o
       GLINC = -I $(GLEW)include/GL/ -I $(GLUT)include/GL/
-      ARCHFLAG = -D GLUT_NO_LIB_PRAGMA -D GLUT_NO_WARNING_DISABLE -D GLUT_DISABLE_ATEXIT_HACK
+      ARCHFLAG = -D GLUT_NO_LIB_PRAGMA -D GLUT_NO_WARNING_DISABLE -D GLUT_DISABLE_ATEXIT_HACK -D GLEW_STATIC
    else
       GUIOBJ =
       GLINC =
@@ -165,6 +172,7 @@ ifeq ($(42PLATFORM),__MSYS__)
       LFLAGS =
       ARCHFLAG =
    endif
+   NOS3OBJ = 
    XWARN = 
    EXENAME = 42.exe
    CC = gcc
@@ -211,17 +219,17 @@ endif
 #endif
 
 42OBJ = $(OBJ)42main.o $(OBJ)42exec.o $(OBJ)42actuators.o $(OBJ)42cmd.o \
-$(OBJ)42dynamics.o $(OBJ)42environs.o $(OBJ)42ephem.o $(OBJ)42fsw.o \
-$(OBJ)42init.o $(OBJ)42ipc.o $(OBJ)42jitter.o $(OBJ)42joints.o \
-$(OBJ)42optics.o $(OBJ)42perturb.o $(OBJ)42report.o $(OBJ)42sensors.o \
-$(OBJ)42nos3.o 
+$(OBJ)42commlink.o $(OBJ)42dynamics.o $(OBJ)42environs.o $(OBJ)42ephem.o \
+$(OBJ)42fsw.o $(OBJ)42init.o $(OBJ)42ipc.o $(OBJ)42jitter.o $(OBJ)42joints.o \
+$(OBJ)42optics.o $(OBJ)42perturb.o $(OBJ)42report.o $(OBJ)42sensors.o
 
-KITOBJ = $(OBJ)dcmkit.o $(OBJ)envkit.o $(OBJ)fswkit.o $(OBJ)geomkit.o \
-$(OBJ)iokit.o $(OBJ)mathkit.o $(OBJ)nrlmsise00kit.o $(OBJ)msis86kit.o \
-$(OBJ)orbkit.o $(OBJ)radbeltkit.o $(OBJ)sigkit.o $(OBJ)sphkit.o $(OBJ)timekit.o
+KITOBJ = $(OBJ)dcmkit.o $(OBJ)envkit.o $(OBJ)fswkit.o  $(OBJ)iokit.o \
+$(OBJ)mathkit.o $(OBJ)meshkit.o $(OBJ)nrlmsise00kit.o $(OBJ)orbkit.o \
+$(OBJ)radbeltkit.o $(OBJ)sigkit.o $(OBJ)sphkit.o $(OBJ)timekit.o
 
-LIBKITOBJ = $(OBJ)dcmkit.o $(OBJ)envkit.o $(OBJ)fswkit.o $(OBJ)geomkit.o \
-$(OBJ)iokit.o $(OBJ)mathkit.o $(OBJ)orbkit.o $(OBJ)sigkit.o $(OBJ)sphkit.o $(OBJ)timekit.o
+LIBKITOBJ = $(OBJ)dcmkit.o $(OBJ)envkit.o $(OBJ)fswkit.o $(OBJ)iokit.o \
+$(OBJ)mathkit.o $(OBJ)meshkit.o $(OBJ)orbkit.o $(OBJ)sigkit.o $(OBJ)sphkit.o \
+$(OBJ)timekit.o
 
 ACKITOBJ = $(OBJ)dcmkit.o $(OBJ)mathkit.o $(OBJ)fswkit.o $(OBJ)iokit.o $(OBJ)timekit.o
 
@@ -230,13 +238,13 @@ AUTOOBJ = $(OBJ)WriteAcToCsv.o $(OBJ)WriteScToCsv.o $(OBJ)TxRxIPC.o
 #ANSIFLAGS = -Wstrict-prototypes -pedantic -ansi -Werror
 ANSIFLAGS =
 
-CFLAGS = -g -O0 -fpic -Wall -Wshadow -Wno-deprecated $(XWARN) $(ANSIFLAGS) $(GLINC) $(CINC) -I $(INC) -I $(KITINC) -I $(KITSRC) $(GMSECINC) $(ARCHFLAG) $(GUIFLAG) $(GUI_LIB) $(SHADERFLAG) $(CFDFLAG) $(FFTBFLAG) $(GSFCFLAG) $(GMSECFLAG) $(STANDALONEFLAG)
+CFLAGS = -std=gnu11 -g -O0 -fpic -Wall -Wshadow -Wno-deprecated $(XWARN) $(ANSIFLAGS) $(GLINC) $(CINC) -I $(INC) -I $(KITINC) -I $(KITSRC) $(GMSECINC) $(ARCHFLAG) $(GUIFLAG) $(GUI_LIB) $(SHADERFLAG) $(CFDFLAG) $(FFTBFLAG) $(GSFCFLAG) $(GMSECFLAG) $(STANDALONEFLAG)
 
 
 ##########################  Rules to link 42  #############################
 
-42 : $(42OBJ) $(KITOBJ) $(GUIOBJ) $(AUTOOBJ) $(ACOBJ) $(SCIPCOBJ) $(GMSECOBJ) $(FFTBOBJ) $(SLOSHOBJ)
-	$(CC) $(LFLAGS) $(GMSECBIN) -o $(EXENAME) $(42OBJ) $(KITOBJ) $(GUIOBJ) $(AUTOOBJ) $(ACOBJ) $(SCIPCOBJ) $(GMSECOBJ) $(FFTBOBJ) $(SLOSHOBJ) $(LIBS)
+42 : $(42OBJ) $(KITOBJ) $(GUIOBJ) $(NOS3OBJ) $(AUTOOBJ) $(ACOBJ) $(SCIPCOBJ) $(GMSECOBJ) $(FFTBOBJ) $(SLOSHOBJ)
+	$(CC) $(LFLAGS) $(GMSECBIN) -o $(EXENAME) $(42OBJ) $(KITOBJ) $(GUIOBJ) $(NOS3OBJ) $(AUTOOBJ) $(ACOBJ) $(SCIPCOBJ) $(GMSECOBJ) $(FFTBOBJ) $(SLOSHOBJ) $(LIBS)
 
 AcApp : $(OBJ)AcApp.o $(ACKITOBJ) $(ACIPCOBJ) $(GMSECOBJ)
 	$(CC) $(LFLAGS) -o AcApp $(OBJ)AcApp.o $(ACKITOBJ) $(ACIPCOBJ) $(GMSECOBJ) $(LIBS)
@@ -258,6 +266,9 @@ $(OBJ)42actuators.o : $(SRC)42actuators.c $(INC)42.h $(INC)Ac.h $(INC)AcTypes.h
 
 $(OBJ)42cmd.o : $(SRC)42cmd.c $(INC)42.h $(INC)Ac.h $(INC)AcTypes.h
 	$(CC) $(CFLAGS) -c $(SRC)42cmd.c -o $(OBJ)42cmd.o
+
+$(OBJ)42commlink.o  : $(SRC)42commlink.c $(INC)42.h
+	$(CC) $(CFLAGS) -c $(SRC)42commlink.c -o $(OBJ)42commlink.o
 
 $(OBJ)42dynamics.o  : $(SRC)42dynamics.c $(INC)42.h
 	$(CC) $(CFLAGS) -c $(SRC)42dynamics.c -o $(OBJ)42dynamics.o
@@ -319,9 +330,6 @@ $(OBJ)fswkit.o      : $(KITSRC)fswkit.c
 $(OBJ)glkit.o      : $(KITSRC)glkit.c $(KITINC)glkit.h
 	$(CC) $(CFLAGS) -c $(KITSRC)glkit.c -o $(OBJ)glkit.o
 
-$(OBJ)geomkit.o      : $(KITSRC)geomkit.c $(KITINC)geomkit.h
-	$(CC) $(CFLAGS) -c $(KITSRC)geomkit.c -o $(OBJ)geomkit.o
-
 $(OBJ)gmseckit.o      : $(KITSRC)gmseckit.c $(KITINC)gmseckit.h
 	$(CC) $(CFLAGS) -c $(KITSRC)gmseckit.c -o $(OBJ)gmseckit.o
 
@@ -330,6 +338,9 @@ $(OBJ)iokit.o      : $(KITSRC)iokit.c
 
 $(OBJ)mathkit.o     : $(KITSRC)mathkit.c
 	$(CC) $(CFLAGS) -c $(KITSRC)mathkit.c -o $(OBJ)mathkit.o
+
+$(OBJ)meshkit.o      : $(KITSRC)meshkit.c $(KITINC)meshkit.h
+	$(CC) $(CFLAGS) -c $(KITSRC)meshkit.c -o $(OBJ)meshkit.o
 
 $(OBJ)nrlmsise00kit.o   : $(KITSRC)nrlmsise00kit.c
 	$(CC) $(CFLAGS) -c $(KITSRC)nrlmsise00kit.c -o $(OBJ)nrlmsise00kit.o
@@ -409,6 +420,6 @@ else ifeq ($(42PLATFORM),_WIN64)
 	del .\Object\*.o .\$(EXENAME) .\InOut\*.42
 else
 	rm -f $(OBJ)*.o ./$(EXENAME) ./AcApp $(KITDIR)42kit.so 
-	rm -f $(INOUT)*.42 ./Standalone/*.42 ./Demo/*.42 ./Rx/*.42 ./Tx/*.42
-	rm -f $(INOUT)*.csv ./Standalone/*.csv ./Demo/*.csv ./Rx/*.csv ./Tx/*.csv
+	rm -f $(INOUT)*.42 ./Standalone/*.42 ./Demo/*.42 ./Rx/*.42 ./Tx/*.42 ./LunarComm/*.42
+	rm -f $(INOUT)*.csv ./Standalone/*.csv ./Demo/*.csv ./Rx/*.csv ./Tx/*.csv ./LunarComm/*.csv
 endif

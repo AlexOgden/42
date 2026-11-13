@@ -28,7 +28,8 @@ long Aperture(double FldPnt[3], double FldDir[3], double ctr[3], double axis[3],
       double dl = 1.0E6;
       double K = 1.0;
       
-      double PoA,rvec[3],r,rhat[3],a;
+      double PoA,rvec[3],rhat[3],a;
+      double r = 0.0;
       double cq[3],l,cp[3];
       long k = 0;
       long i;
@@ -66,7 +67,8 @@ long PlanarMirror(double FldPnt[3], double FldDir[3], double ctr[3], double axis
       double dl = 1.0E6;
       double K = 1.0;
       
-      double PoA,rvec[3],r,rhat[3],a;
+      double PoA,rvec[3],rhat[3],a;
+      double r = 0.0;
       double cq[3],l,cp[3];
       double nhat[3],LoN;
       long k = 0;
@@ -109,9 +111,11 @@ long ConicMirror(double FldPnt[3], double FldDir[3], double ctr[3], double axis[
       double dl = 1.0E6;
       double G = 1.0;
       
-      double R,D;
+      double R;
+      double D = 0.0;
       
-      double PoA,rvec[3],r,rhat[3],a;
+      double PoA,rvec[3],rhat[3],a;
+      double r = 0.0;
       double cq[3],l,cp[3];
       double nhat[3],LoN;
       double Den;
@@ -210,7 +214,8 @@ long Detector(double FldPnt[3], double FldDir[3], double ctr[3], double axis[3],
       double dl = 1.0E6;
       double K = 1.0;
       
-      double PoA,rvec[3],r,rhat[3],a;
+      double PoA,rvec[3],rhat[3],a;
+      double r = 0.0;
       double cq[3],l,cp[3];
       long k = 0;
       long i;

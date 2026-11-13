@@ -18,14 +18,26 @@
 
 #include "42.h"
 #define EXTERN extern
-#include "glkit.h"
+#include "42gl.h"
 #undef EXTERN
+
+/* 32-bit textures give more accuracy, if supported */
+#ifdef GL_RGBA32F
+   #define TEX_FMT GL_RGBA32F
+#else
+   #define TEX_FMT GL_RGBA
+#endif
 
 GLuint EarthAlbedoCubeTag;
 GLuint GenericAlbedoCubeTag;
-GLuint AlbedoWindow;
 
+#ifdef _USE_GLUT_
+   GLuint AlbedoWindow;
+#else
+   GLFWwindow *AlbedoWindow;
+#endif
 
+#ifdef _USE_SHADERS_
 /**********************************************************************/
 /* GLUT wants a display callback for AlbedoWindow */
 void NullDisplay(void) {}
@@ -40,11 +52,16 @@ void InitAlbedo(void)
       struct AlbedoFBOType *A;
       GLuint Width = 64; /* Must be power of 2 */
       
-      glutInitWindowSize(Width,Width);
-      AlbedoWindow = glutCreateWindow("Albedo Workspace");
-      glutSetWindow(AlbedoWindow);
+      #ifdef _USE_GLUT_
+         glutInitWindowSize(Width,Width);
+         AlbedoWindow = glutCreateWindow("Albedo Workspace");
+         glutSetWindow(AlbedoWindow);
+         glutDisplayFunc(NullDisplay);
+      #else
+         AlbedoWindow = glfwCreateWindow(Width,Width,"Albedo Workspace",NULL,NULL);
+         glfwMakeContextCurrent(AlbedoWindow);
+      #endif
       glViewport(0,0,Width,Width);
-      glutDisplayFunc(NullDisplay);
       glEnable(GL_BLEND);
       glBlendFunc(GL_ONE,GL_ONE); 
 
@@ -59,7 +76,7 @@ void InitAlbedo(void)
       /* Create Textures */
       glGenTextures(1,(GLuint *) &A->TexTag);
       glBindTexture(GL_TEXTURE_2D,A->TexTag);
-      glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,A->Width,A->Height,0,
+      glTexImage2D(GL_TEXTURE_2D,0,TEX_FMT,A->Width,A->Height,0,
          GL_RGBA,GL_FLOAT,NULL);
       glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP);
       glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP);
@@ -70,7 +87,7 @@ void InitAlbedo(void)
       glGenRenderbuffers(1,&A->RenderTag);
       glBindRenderbuffer(GL_RENDERBUFFER,A->RenderTag);
       glRenderbufferStorage(GL_RENDERBUFFER,
-         GL_RGBA,A->Width,A->Height);
+         TEX_FMT,A->Width,A->Height);
 
       glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D,A->TexTag,0);
 
@@ -162,7 +179,11 @@ void FindCssAlbedo(struct SCType *S, struct CssType *CSS)
          First = 0;
          InitAlbedo();
       }
-      glutSetWindow(AlbedoWindow);
+      #ifdef _USE_GLUT_
+         glutSetWindow(AlbedoWindow);
+      #else
+         glfwMakeContextCurrent(AlbedoWindow);
+      #endif
 
       B = &S->B[CSS->Body];
       W = &World[Orb[S->RefOrb].World];
@@ -271,3 +292,56 @@ void FindCssAlbedo(struct SCType *S, struct CssType *CSS)
       
       
 }
+/**********************************************************************/
+void CameraModel(struct SCType *S)
+{
+      struct CameraType *Cam;
+      struct POVType *POV;
+      long Icam;
+      long i;
+      
+      for(Icam=0;Icam<S->Ncam;Icam++) {
+         if (S->Cam[Icam].Export) {
+            Cam = &S->Cam[Icam];
+            POV = &Cam->POV;
+            
+            if (Cam->Init) {
+               Cam->Init = FALSE;
+               InitCameraWindow(Cam);
+            }
+            
+            Cam->SampleCounter++;
+            if (Cam->SampleCounter >= Cam->MaxCounter) {
+               Cam->SampleCounter = 0;
+
+               #ifdef _USE_GLUT_
+                  glutSetWindow(Cam->Window);
+               #else
+                  glfwMakeContextCurrent(Cam->Window);
+               #endif
+               CurrentCameraPOV = &Cam->POV;
+               DrawCamera();
+               
+               if (Cam->Export) {
+                  if (Cam->PixelFormat == PIX_RGB) {
+                     glReadPixels(0,0,POV->PixWidth,POV->PixHeight,
+                        GL_RGB,GL_UNSIGNED_BYTE,Cam->ColorImage);
+                  }
+                  if (Cam->PixelFormat == PIX_RGBA) {
+                     glReadPixels(0,0,POV->PixWidth,POV->PixHeight,
+                        GL_RGBA,GL_UNSIGNED_BYTE,Cam->ColorImage);
+                  }
+                  if (Cam->PixelFormat == PIX_DEPTH) {
+                     glReadPixels(0,0,POV->PixWidth,POV->PixHeight,
+                        GL_DEPTH_COMPONENT,GL_FLOAT,Cam->DepthImage);
+                     for(i=0;i<Cam->ImageLen;i++) {
+                        Cam->DepthImage[i] = DepthToDistance(Cam->DepthImage[i],
+                           POV->Near,POV->Far);
+                     }
+                  }
+               }
+            }
+         }
+      }
+}
+#endif

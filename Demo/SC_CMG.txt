@@ -38,7 +38,7 @@ NONE                        ! Node File Name
 NONE                          ! Flex File Name
 ================================ CMG 0 ================================
 10.0                          ! Mass
-20.0  10.0  0.12              ! Moments of Inertia (kg-m^2)
+10.0  10.0  10.0              ! Moments of Inertia (kg-m^2)
 0.0  0.0  0.0                 ! Products of Inertia (xy,xz,yz)
 0.0  0.0  0.0                 ! Location of mass center, m
 0.0  0.0 75.0                 ! Constant Embedded Momentum (Nms)
@@ -48,7 +48,7 @@ NONE                        ! Node File Name
 NONE                          ! Flex File Name
 ================================ CMG 1 ================================
 10.0                          ! Mass
-20.0  10.0  0.12              ! Moments of Inertia (kg-m^2)
+10.0  10.0  10.0              ! Moments of Inertia (kg-m^2)
 0.0  0.0  0.0                 ! Products of Inertia (xy,xz,yz)
 0.0  0.0  0.0                 ! Location of mass center, m
 0.0  0.0 75.0                 ! Constant Embedded Momentum (Nms)
@@ -58,7 +58,7 @@ NONE                        ! Node File Name
 NONE                          ! Flex File Name
 ================================ CMG 2 ================================
 10.0                          ! Mass
-20.0  10.0  0.12              ! Moments of Inertia (kg-m^2)
+10.0  10.0  10.0              ! Moments of Inertia (kg-m^2)
 0.0  0.0  0.0                 ! Products of Inertia (xy,xz,yz)
 0.0  0.0  0.0                 ! Location of mass center, m
 0.0  0.0 75.0                 ! Constant Embedded Momentum (Nms)
@@ -68,7 +68,7 @@ NONE                        ! Node File Name
 NONE                          ! Flex File Name
 ================================ CMG 3 ================================
 10.0                          ! Mass
-20.0  10.0  0.12              ! Moments of Inertia (kg-m^2)
+10.0  10.0  10.0              ! Moments of Inertia (kg-m^2)
 0.0  0.0  0.0                 ! Products of Inertia (xy,xz,yz)
 0.0  0.0  0.0                 ! Location of mass center, m
 0.0  0.0 75.0                 ! Constant Embedded Momentum (Nms)
@@ -244,6 +244,20 @@ Z_AXIS                        ! Boresight Axis X_AXIS, Y_AXIS, or Z_AXIS
 0.0                           ! DV Noise, m/s
 0.5                           ! Initial Bias (m/s^2)
 0                             ! Node
+********************************* Camera *********************************
+0                           ! Number of Cameras
+================================ Camera 0 ================================
+1.0                         ! Sample Time,sec
+"Camera"                    ! Title
+0  0                        ! Body, Node
+90.0  0.0  0.0  321         ! Nominal Mounting Angles (deg), Seq in Body
+Z_AXIS                      ! Boresight Axis X_AXIS, Y_AXIS, or Z_AXIS
+800  450                    ! Screen Position, pixels
+300  300                    ! Window Width, Height, pixels
+30.0                        ! Vertical FOV Size, deg
+1.0  1000.0                 ! Near, Far Clipping Planes (m)
+RGB                         ! Pixel Format (RGB, RGBA, DEPTH)
+TRUE   FALSE                ! Display to Screen, Export to CPU
 ************************ Fine Guidance Sensor ****************************
 0                           ! Number of Fine Guidance Sensors
 ========================= Fine Guidance Sensor 0 =========================

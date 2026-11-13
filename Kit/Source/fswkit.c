@@ -909,9 +909,25 @@ void StateEstimator(double **PHI, double **GAMMA, double **H,
       long i,j;
 
       Hx = (double *) calloc(Ny,sizeof(double));
+      if (Hx==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
       Lz = (double *) calloc(Nx,sizeof(double));
+      if (Lz==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
       PHIx = (double *) calloc(Nx,sizeof(double));
+      if (PHIx==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
       GAMMAu = (double *) calloc(Nx,sizeof(double));
+      if (GAMMAu==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
 
       for(i=0;i<Ny;i++) {
          for(j=0;j<Nx;j++) {
@@ -987,7 +1003,15 @@ void UDMeasUpdate(double *x, double **U, double y, double *H,
       long i,j,k;
 
       a = (double *) calloc(Ns,sizeof(double));
+      if (a==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
       b = (double *) calloc(Ns,sizeof(double));
+      if (b==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
 
       z = y;
       for(j=0;j<Ns;j++) {
@@ -1042,9 +1066,25 @@ void UDTimeUpdate(double *x, double **U, double **phi, double **gam,
 
       Uaug = CreateMatrix(Naug,Naug);
       D = (double *) calloc(Naug,sizeof(double));
+      if (D==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
       v = (double *) calloc(Naug,sizeof(double));
+      if (v==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
       a = (double *) calloc(Naug,sizeof(double));
+      if (a==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
       Gy = (double *) calloc(Ns,sizeof(double));
+      if (Gy==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
 
       for(i=0;i<Ns;i++) {
          for(j=0;j<Ns;j++) {
@@ -1175,6 +1215,10 @@ struct KalmanFilterType *CreateKalmanFilter(long Nx, long Nu, long Nw, long Nm)
       struct KalmanFilterType *KF;
       
       KF = (struct KalmanFilterType *) calloc(1,sizeof(struct KalmanFilterType));
+      if (KF==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
       
       KF->Nx = Nx;
       KF->Nu = Nu;
@@ -1182,41 +1226,130 @@ struct KalmanFilterType *CreateKalmanFilter(long Nx, long Nu, long Nw, long Nm)
       KF->Nm = Nm;
       
       KF->x = (double *) calloc(Nx,sizeof(double));
+      if (KF->x==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
       KF->u = (double *) calloc(Nu,sizeof(double));
+      if (KF->u==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
 
       KF->Phi = (double **) calloc(Nx,sizeof(double *));
+      if (KF->Phi==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
       for(i=0;i<Nx;i++) {
          KF->Phi[i] = (double *) calloc(Nx,sizeof(double *));
+         if (KF->Phi[i]==NULL) {
+            printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+            exit(1);
+         }
       }
 
       KF->Gam = (double **) calloc(Nx,sizeof(double *));
+      if (KF->Gam==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
       for(i=0;i<Nx;i++) {
          KF->Gam[i] = (double *) calloc(Nu,sizeof(double *));
+         if (KF->Gam[i]==NULL) {
+            printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+            exit(1);
+         }
       }
 
       KF->Gamw = (double **) calloc(Nx,sizeof(double *));
+      if (KF->Gamw==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
       for(i=0;i<Nx;i++) {
          KF->Gamw[i] = (double *) calloc(Nw,sizeof(double *));
+         if (KF->Gamw==NULL) {
+            printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+            exit(1);
+         }
       }
       
       KF->P = (double **) calloc(Nx,sizeof(double *));
-      for(i=0;i<Nx;i++) KF->P[i] = (double *) calloc(Nx,sizeof(double));
+      if (KF->P==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
+      for(i=0;i<Nx;i++) {
+         KF->P[i] = (double *) calloc(Nx,sizeof(double));
+         if (KF->P[i]==NULL) {
+            printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+            exit(1);
+         }
+      }
       
       KF->Rw = (double **) calloc(Nw,sizeof(double *));
+      if (KF->Rw==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
       for(i=0;i<Nw;i++) {
          KF->Rw[i] = (double *) calloc(Nw,sizeof(double *));
+         if (KF->Rw[i]==NULL) {
+            printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+            exit(1);
+         }
       }
       
       KF->Meas = (struct KFMeasType *) calloc(Nm,sizeof(struct KFMeasType));
+      if (KF->Meas==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
       
       KF->PhiX = (double *) calloc(Nx,sizeof(double));
+      if (KF->PhiX==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
       KF->GamU = (double *) calloc(Nx,sizeof(double));
+      if (KF->GamU==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
       
       KF->PhiP = (double **) calloc(Nx,sizeof(double *));
-      for(i=0;i<Nx;i++) KF->PhiP[i] = (double *) calloc(Nx,sizeof(double));
+      if (KF->PhiP==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
+      for(i=0;i<Nx;i++) {
+         KF->PhiP[i] = (double *) calloc(Nx,sizeof(double));
+         if (KF->PhiP[i]==NULL) {
+            printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+            exit(1);
+         }
+      }
       
       KF->GRwGt = (double **) calloc(Nx,sizeof(double *));
-      for(i=0;i<Nx;i++) KF->GRwGt[i] = (double *) calloc(Nx,sizeof(double));
+      if (KF->GRwGt==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
+      for(i=0;i<Nx;i++) {
+         KF->GRwGt[i] = (double *) calloc(Nx,sizeof(double));
+         if (KF->GRwGt==NULL) {
+            printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+            exit(1);
+         }
+      }
+      
+      if (KF==NULL || KF->x==NULL || KF->u==NULL || KF->Gamw==NULL ||
+          KF->Meas==NULL || KF->PhiX==NULL || KF->GamU==NULL || 
+          KF->GRwGt==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
       
       return(KF);
 }
@@ -1227,7 +1360,17 @@ void PopulateKalmanFilterWorkspace(struct KalmanFilterType *KF)
       long i,j,k;
 
       GRw = (double **) calloc(KF->Nx,sizeof(double *));
-      for(i=0;i<KF->Nx;i++) GRw[i] = (double *) calloc(KF->Nw,sizeof(double));
+      if (GRw==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
+      for(i=0;i<KF->Nx;i++) {
+         GRw[i] = (double *) calloc(KF->Nw,sizeof(double));
+         if (GRw[i]==NULL) {
+            printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+            exit(1);
+         }
+      }
       for(i=0;i<KF->Nx;i++) {
          for(j=0;j<KF->Nw;j++) {
             for(k=0;k<KF->Nw;k++) {
@@ -1235,8 +1378,19 @@ void PopulateKalmanFilterWorkspace(struct KalmanFilterType *KF)
             }
          }
       }
+      
       KF->GRwGt = (double **) calloc(KF->Nx,sizeof(double *));
-      for(i=0;i<KF->Nx;i++) KF->GRwGt[i] = (double *) calloc(KF->Nx,sizeof(double));
+      if (KF->GRwGt==NULL) {
+         printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+         exit(1);
+      }
+      for(i=0;i<KF->Nx;i++) {
+         KF->GRwGt[i] = (double *) calloc(KF->Nx,sizeof(double));
+         if (KF->GRwGt[i]==NULL) {
+            printf("Allocation failed in %s:%d\n",__FILE__,__LINE__);
+            exit(1);
+         }
+      }
       for(i=0;i<KF->Nx;i++) {
          for(j=0;j<KF->Nx;j++) {
             for(k=0;k<KF->Nw;k++) {
