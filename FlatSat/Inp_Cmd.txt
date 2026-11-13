@@ -1,0 +1,5 @@
+<<<<<<<<<<<<<<<<<  42:  Command Script File  >>>>>>>>>>>>>>>>>
+EOF
+
+# FlatSat uses PASSIVE_FSW and receives closed-loop actuation commands
+# over IPC (port 10002) via SimBroker.
