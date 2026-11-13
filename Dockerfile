@@ -18,10 +18,10 @@ COPY . .
 # Set the database fields to send over IPC defined in Database/42.json
 # RUN julia MetaCode/JsonToTxRxIPC.jl
 
-# Compile the 42 C code (clean first to avoid stale objects from previous toolchains)
+# Compile the 42 C code with -O2 optimization (clean first to avoid stale objects from previous toolchains)
 RUN make clean
-RUN sed -i "s|^CFLAGS =|CFLAGS = -std=gnu99 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 |" Makefile \
-    && make -s
+RUN sed -i "s|^CFLAGS =|CFLAGS = -std=gnu99 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 |; s| -O0 | -O2 |g" Makefile \
+    && make -s -j"$(nproc)"
 
 # Use a minimal base for runtime stage
 FROM debian:bookworm-slim
