@@ -33,7 +33,7 @@ ENV HOME=/home/42user
 # Copy only the built binaries from the builder and adjust ownership
 COPY --from=builder --chown=42user:42user /app/42 /app/42
 COPY --from=builder --chown=42user:42user /app/Model /app/Model
-COPY --from=builder --chown=42user:42user /app/Tx /app/Tx
+COPY --from=builder --chown=42user:42user /app/FlatSat /app/FlatSat
 
 # Install glut, tini, and cleanup
 RUN apt-get update && \
@@ -48,4 +48,4 @@ USER 42user
 WORKDIR /app
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/app/42"]
-CMD ["Tx"]
+CMD ["FlatSat"]
